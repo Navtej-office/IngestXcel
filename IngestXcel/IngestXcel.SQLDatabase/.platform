@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SQLDatabase",
+    "displayName": "IngestXcel"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80"
+  }
+}

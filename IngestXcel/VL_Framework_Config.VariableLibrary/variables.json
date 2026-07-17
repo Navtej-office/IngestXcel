@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/variables/1.0.0/schema.json",
+  "variables": [
+    {
+      "name": "metadata_workspace_id",
+      "note": "",
+      "type": "String",
+      "value": "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
+    },
+    {
+      "name": "metadata_sqldb_name",
+      "note": "",
+      "type": "String",
+      "value": "META_*"
+    },
+    {
+      "name": "metadata_sqldb_endpoint",
+      "note": "",
+      "type": "String",
+      "value": "4jfcb5bfocpe7aec5fav673svq-zc7hgjzymrzermxo2nhrumvtve.datawarehouse.fabric.microsoft.com"
+    },
+    {
+      "name": "default_spark_environment_id",
+      "note": "",
+      "type": "String",
+      "value": "a7b48763-9fb9-4549-ba7f-fe8bf5297394"
+    },
+    {
+      "name": "runtime_environment",
+      "note": "",
+      "type": "String",
+      "value": "dev"
+    }
+  ]
+}
