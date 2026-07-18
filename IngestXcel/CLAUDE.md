@@ -1,5 +1,5 @@
 # CLAUDE.md — Metadata-Driven Ingestion Framework (Microsoft Fabric)
-> Last updated: 2026-07-15
+> Last updated: 2026-07-18
 
 > This document explains the Project overview, key architectural decision, data model etc for claude
 > This file is persistent project context for Claude. Read it fully before making
@@ -76,7 +76,7 @@ if a change seems warranted, flag it and ask before implementing.
    capabilities for Bronze layer ingestion:
    Dynamic connectivity using parameterized pipelines driven by metadata.
    Configurable load types, including Full Load and Incremental Load.
-   Schema evolution is not automatic by default; entities requiring drift-safety use a notebook-based load path (see item #20), configured explicitly per entity.
+   Schema evolution is not automatic by default; eentities requiring drift-safety use a notebook-based load path (see item #25), configured explicitly per entity.
    Capture and maintenance of audit and operational metadata for each ingestion execution.
    Ingestion of structured data into append-only Delta tables to preserve the raw history of the source data.
    Extensibility to support multiple source systems and data formats through a common metadata-driven framework.
@@ -93,29 +93,54 @@ if a change seems warranted, flag it and ask before implementing.
     because the metadata store is Fabric SQL Database (which supports enforced FKs, unlike Fabric Warehouse). If the metadata store ever moves to Warehouse, this FK must be dropped or redeclared NOT ENFORCED, and endpoint-ID validation would need to move into the write path instead.
 17. **LogTable** Log table approach should be optimsed as any FK in Log table will have to be resolved
     during the  execution time. Hence the FK is removed and Business key is kept 
-18. **Execution and Orchestration Requirements**  Each medallion layer (Bronze, Silver, Gold) has its 
-    own trigger name and its own set of META_ORCHESTRATION rows (e.g. TRG_BRONZE_LOAD_DAILY, TRG_SILVER_LOAD_DAILY, TRG_GOLD_LOAD_DAILY). Layer sequencing is enforced at the pipeline level: a master orchestrator pipeline invokes the Bronze, Silver, and Gold pipelines in strict order using Execute Pipeline activities with waitOnCompletion = true, so Silver never starts before Bronze completes, and Gold never starts before Silver completes. Within each layer, multiple source systems are processed in parallel (grouped by source connection endpoint), and multiple tables within the same source system run in parallel subject to ORDER_OF_OPERATIONS. This requires no additional metadata schema — the existing TRIGGER_NAME per layer is sufficient.
+18. **Execution and Orchestration Requirements**  Each medallion layer (Bronze, Silver, Gold), for 
+    each source system, and for each schedule frequency, has its own trigger name and its own set of META_ORCHESTRATION rows — see Section 5's TRG_{SYSTEM_IDENTIFIER}_{LAYER}_LOAD_{FREQUENCY} convention (e.g. TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY). A single trigger therefore contains only one system's tables at a time — it does not span multiple source systems.
+    - Cross-system parallelism is achieved by scheduling multiple independent Fabric triggers concurrently, each invoking PL_Master_Orchestrator with a different SystemIdentifier parameter — not by grouping systems within a shared trigger's execution.
+    - Layer sequencing within one system is enforced at the pipeline level: PL_Master_Orchestrator derives that system's Bronze/Silver/Gold trigger names from its SystemIdentifier and Frequency parameters, and invokes each layer's pipeline in strict order via Execute Pipeline activities with waitOnCompletion = true — Silver never starts before Bronze completes for that system, and Gold never starts before Silver completes.
+    - Parallelism within one trigger (i.e., across the tables belonging to one system, at one layer) is achieved via a single flat ForEach with bounded concurrency (isSequential = false, Batch count = a MaxConcurrency pipeline parameter, default 4, configurable per run). This requires each Switch case / branch to be fully self-contained (its own logging completion steps referencing only its own activity outputs directly) — no pipeline variables shared across iterations, which are unsafe under concurrent execution.
+    This requires no additional metadata schema beyond what Section 3 already defines — TRIGGER_NAME, scoped per system/layer/frequency per Section 5, is sufficient.
+
+
 19. **Schedule Frequency Support** The metadata-driven ingestion framework shall support native fabric 
      scheduling /trigger feature and support  minimum scheduling frequency of once per hour. The framework shall also be designed to accommodate lower-frequency schedules (e.g., daily, weekly, or monthly)  
 20. **Onboarding Governance Model-Layer Schema/Table Provisioning**
     Target schema and table(s) for all three layers (Bronze, Silver, Gold) are provisioned as a one-time manual setup step during consumer onboarding/change registration — never auto-created by any pipeline or notebook at runtime. This applies uniformly across layers; Silver and Gold structures (SCD tracking columns, business-logic outputs) cannot be mechanically inferred from source schema in the first place, making explicit DDL a hard requirement there, not merely a preference carried over from Bronze.
-    The framework is owned and governed by a central team. Consumers request onboarding via the governance forum and submit their metadata registration using the framework's specified template.
-    As part of registration, the consumer (or the central team on their behalf) creates the schema and target table(s) for every layer being registered, matching exactly what's declared in metadata (TARGET_ENTITY, BRONZE_SCHEMA_ALIAS, and their Silver/Gold equivalents once those layers are built).
-    All Copy/write activities use "Use existing", never auto-create. A run failing on a missing schema/table signals an incomplete registration, not a pipeline defect — and keeps the pipeline's own execution identity scoped to write/insert permissions only, with no CREATE TABLE/CREATE SCHEMA rights needed anywhere.
-    Schema drift is not silently auto-applied at any layer. Tested directly: Fabric's Copy activity, writing to an existing Delta table via implicit name-based mapping, neither errors nor adds a genuinely new source column — it's silently dropped. This confirmed the need for an explicit per-entity choice rather than relying on default Copy activity behavior.
-    Bronze schema-drift handling (open, to be finalized in a follow-up build phase): a per-entity flag — META_CONFIGURATION_CORE (CONFIGURATION_CATEGORY='BRONZE', CONFIGURATION_NAME='SCHEMA_EVOLUTION_REQUIRED', Y/N) — will determine whether an entity's Bronze load uses the standard pipeline Copy activity (cheap, no drift handling) or a notebook-based write using Delta's mergeSchema option (handles new source columns automatically, at Spark compute cost). This flag will be a required, explicit field in the onboarding registration template — never silently defaulted — so the central team makes an informed per-table call on expected schema stability.
-    Silver/Gold schema drift: by design, changes do not need to automatically propagate beyond Bronze. A new source column landing in Bronze is sufficient; whether and how it flows into Silver/Gold is a deliberate, separate change managed through the same registration/approval process — not automatic.
+    - The framework is owned and governed by a central team. Consumers request onboarding via the governance forum and submit their metadata registration using the framework's specified template.
+    - As part of registration, the consumer (or the central team on their behalf) creates the schema and target table(s) for every layer being registered, matching exactly what's declared in metadata (TARGET_ENTITY, BRONZE_SCHEMA_ALIAS, and their Silver/Gold equivalents once those layers are built).
+    - All Copy/write activities use "Use existing", never auto-create. A run failing on a missing schema/table signals an incomplete registration, not a pipeline defect — and keeps the pipeline's own execution identity scoped to write/insert permissions only, with no CREATE TABLE/CREATE SCHEMA rights needed anywhere.
+    - Schema drift is not silently auto-applied at any layer. Tested directly: Fabric's Copy activity, writing to an existing Delta table via implicit name-based mapping, neither errors nor adds a genuinely new source column — it's silently dropped. This confirmed the need for an explicit per-entity choice rather than relying on default Copy activity behavior.
+    - Bronze schema-drift handling  is decided per entity via the EXECUTION_METHOD field — see item #25 for the current, generalized mechanism. (This item previously specified a narrower SCHEMA_EVOLUTION_REQUIRED flag scoped only to drift-safety; that has been superseded — schema drift is now just one of several reasons an entity might be registered with EXECUTION_METHOD = 'NOTEBOOK'.)
+    - Silver/Gold schema drift: by design, changes do not need to automatically propagate beyond Bronze. A new source column landing in Bronze is sufficient; whether and how it flows into Silver/Gold is a deliberate, separate change managed through the same registration/approval process — not automatic.
 21. **Schema-per-source-system** the Bronze schema a table lands under is resolved from the source 
     endpoint, not the target Lakehouse — stored as BRONZE_SCHEMA_ALIAS on the source's META_CONNECTION_ENDPOINT (e.g. FABRICTRAINING_INGESTXCEL). This prevents two distinct collision scenarios when a single Bronze Lakehouse hosts multiple source systems: two sources sharing a schema/table name, and one source having two schemas with an identically-named table (the latter already handled separately by keeping target table names schema-prefixed, e.g. PERSON_ADDRESS vs SALES_ADDRESS).  
-22. **Connection Design** One Fabric Connection per physical source database, not one universal connection per tech type.     
-    Fabric's "SQL database" connector binds a Connection object to one specific database at creation time — it does not expose separate dynamic Workspace/Database override fields the way the Lakehouse connector does. The Connection's own GUID is stored as a FABRIC_CONNECTION_ID property on the source endpoint, and the Copy activity's Connection field is set to "Use dynamic content" referencing that stored ID. Adding a new physical source database requires creating one new Connection and recording its ID in metadata — no pipeline changes.
+22. **Connection Design** One Fabric Connection per physical source database, not one universal 
+    connection per tech type.     
+    Fabric's "SQL database" connector binds a Connection object to one specific database at creation time — it does not expose separate dynamic Workspace/Database override fields the way the Lakehouse connector does. The Connection's own GUID is stored as a CONNECTION_ID property on the source endpoint (renamed from the earlier FABRIC_CONNECTION_ID — this property isn't conceptually Fabric-specific once non-Fabric-native sources like Azure SQL Database also need one), and the Copy activity's Connection field is set to "Use dynamic content" referencing that stored ID. Adding a new physical source database requires creating one new Connection and recording its ID in metadata — no pipeline changes.
 23. **Bronze growth management:** Bronze remains append-only by design (never truncated). Growth is controlled via (1) 
     partitioning     by INGESTION_BATCH_DT, (2) a retention/purge policy — default [confirm: 180 days] — enforced by a scheduled maintenance job, not the ingestion pipeline itself, and (3) governance review at onboarding to ensure PROCESSING_METHOD = FULL is only assigned to small, low-volume reference tables. Not yet implemented — tracked as a follow-up build phase alongside schema-drift handling.
 24. **Fabric Constraints**
-    (a) The lowercase-GUID rule. WORKSPACE_ID/LAKEHOUSE_ID/SQLDATABASE_ID/FABRIC_CONNECTION_ID must be stored lowercase — OneLake's path validation is case-sensitive and rejects uppercase, even though a GUID is technically case-insensitive. 
-    (b) The Lakehouse schema-naming rule. Confirmed directly from Fabric's own error message: schema names must contain only letters, numbers, and underscores — no hyphens.  
+    (a) The lowercase-GUID rule. WORKSPACE_ID/LAKEHOUSE_ID/SQLDATABASE_ID/CONNECTION_ID must be stored lowercase — OneLake's path validation is case-sensitive and rejects uppercase, even though a GUID is technically case-insensitive.
+    (b) The Lakehouse schema-naming rule. Confirmed directly from Fabric's own error message: schema names must contain only letters, numbers, and underscores — no hyphens.
     (c) The Lakehouse SQL analytics endpoint is read-only. No DDL or data writes (CREATE SCHEMA, CREATE TABLE, INSERT/UPDATE/DELETE) can be executed against it. Schema/table creation and all data modifications must go through the Lakehouse Explorer UI or a Spark notebook.
     (d) Activities nested inside a Switch case or If Condition branch cannot be referenced from outside that construct. Bridge required values across scope via pipeline variables, set immediately after the nested activity — safe only because the ForEach is Sequential, not Parallel.
+25. **Execution Method (Bronze)**META_CONFIGURATION_CORE, CONFIGURATION_CATEGORY = 'BRONZE',        
+    CONFIGURATION_NAME = 'EXECUTION_METHOD', value 'PIPELINE' or 'NOTEBOOK'. Required and explicit per Bronze entity at onboarding — never defaulted, never silently inferred. Replaces the earlier, narrower SCHEMA_EVOLUTION_REQUIRED flag; schema-drift safety is now just one possible reason a consumer chooses NOTEBOOK, not the only one. PIPELINE is the expected default recommendation for new tables (cheaper, proven path); NOTEBOOK is a deliberate opt-in exception. Scoped to Bronze only — Silver and Gold are always NOTEBOOK by construction, so storing this value for them would be inert metadata never read by anything.
+26. **Restart-from-Failure** Handled entirely via a runtime pipeline parameter, never a metadata 
+    flag — toggling a persistent field for operational restarts creates CI/CD drift and risks silently disabling a table if someone forgets to revert it.
+    - TargetEntityIds (String, default '' = process everything) — a comma-separated list of META_ORCHESTRATION_ID values. When populated, only those orchestration rows are processed; used to retry just the entities that actually failed, without re-processing succeeded work (critical for FULL-load entities, which would otherwise get a redundant duplicate append on every retry).
+    - spGet_Bronze_Batch/spGet_Silver_Batch both accept this parameter and filter accordingly.
+    - A helper procedure, spGet_Failed_Entities(@TriggerName), returns a ready-to-paste comma-separated list of the most recent run's failed META_ORCHESTRATION_IDs, so a retry never requires manually reading the log table.
+    - TargetEntityIds threads through PL_Master_Orchestrator as well as the individual layer pipelines, so a Bronze-only retry doesn't require re-invoking Silver.
+27. **Gold — Placeholder Scope for This Phase** Gold is not built this phase. The metadata model 
+    reserves just enough shape to make a future Gold build additive rather than a redesign:
+    - 'GOLD' is a valid value wherever trigger/layer naming conventions are validated.
+    - META_CONFIGURATION_CORE.CONFIGURATION_CATEGORY = 'GOLD' is a reserved category name (mirroring 'BRONZE'/'SILVER'), with no values seeded yet.
+    - No Gold stored procedures, no real PL_Gold_Load logic — only an empty placeholder pipeline shell exists (see Task 5.1).
+    - Standing principle, decided now to avoid re-deriving later: a Gold entity's source is Silver's own target for that entity — the same "layer N reads from layer N-1's output, not the original external system" pattern already established for Silver reading from Bronze.
+28. **Platform Constraint: Spark/Notebook Table Creation Lowercases Names by Default**
+    Spark's catalog is case-insensitive by default (inherited Hive metastore behavior, true across all Spark environments, not Fabric-specific) — any schema or table created via notebook (CREATE SCHEMA/CREATE TABLE) is silently normalized to lowercase unless spark.conf.set("spark.sql.caseSensitive", True) is explicitly set beforehand in that session.
+    Rather than requiring this flag to be remembered every time a new source is onboarded (a fragile, easy-to-miss manual step repeated indefinitely), the framework adopted lowercase as the standard target-naming convention instead (see Section 5) — this works with Spark's natural default rather than fighting it on every future table creation.
+    Note: Fabric's Copy-activity-driven "Auto create table" path appears to preserve case correctly (unlike raw notebook CREATE TABLE), which is why earlier uppercase-named objects created that way worked without issue — the risk is specifically with notebook/Spark-SQL-based creation, which matters once schema-drift-safe (EXECUTION_METHOD = 'NOTEBOOK') entities are built.
 
 ---
 
@@ -448,7 +473,7 @@ testing against a real example over purely abstract code.
 - **Error handling:**one failed table in a Trigger_Name batch should not stop the whole batch. It   
    should continue and log the failure per row.  
 - **Concurrency:** 4 sources/target run in parallel  
-- **Retry policy:** max retries=3 
+- **Retry policy:** max retries=3  - Retry policy: max retries = 3, configured as a per-activity property (General tab - Retry / Retry interval) on each pipeline activity that connects to an external source - not a metadata-table-driven setting. Applied to the Copy activity and any Lookup activities touching the source system; the metadata-store-only logging activities (Start Log, Complete Log Success/Failure) are lower priority for this since they're generally more stable.
 - **Alerting:**  Fabric alerts, Teams, email
 
 ---
@@ -456,8 +481,16 @@ testing against a real example over purely abstract code.
 ## 5. Conventions
 
 - **Naming:** [table/column naming convention, notebook naming, pipeline  naming]
-**TableName and Column Name :** Keep the table and column  name always upper case in target  and any table or column related to metadata. 
+**TableName and Column Name :**   all Bronze (and future Silver/Gold) target-side schema names and 
+    table names are lowercase (e.g. fabrictraining_ingestxcel, person_businessentitycontact), not uppercase as originally specified. This was changed after discovering that Spark/notebook-created objects are silently lowercased by default (see item #28) — rather than requiring every future table/schema creation to remember a special Spark config to preserve uppercase, the framework adopts lowercase as its standard so object creation works correctly by default, with no extra step to forget. 
+    This applies to BRONZE_SCHEMA_ALIAS, TARGET_ENTITY, and their Silver/Gold equivalents once built. Source-side names (the actual external system's own schema/table names, e.g. Person.BusinessEntityContact in the source SQL DB) are untouched — this convention only governs names the framework itself creates in the target Lakehouse.
+    Metadata columns/values unrelated to target object naming (e.g. PROCESSING_METHOD, EXECUTION_METHOD, AUTH_TYPE) keep their existing uppercase convention — this change is scoped specifically to physical schema/table names in the target, not metadata values generally.
 
+- Trigger Naming Convention - TRG_{SYSTEM_IDENTIFIER}_{LAYER}_LOAD_{FREQUENCY}
+    One trigger per source system, per layer, per schedule frequency — not one shared trigger across systems. This enables independent scheduling, pausing, and alerting per system (critical at the scale this framework targets — many independently-owned upstream systems, each with its own SLA and cadence), and allows individual tables within one system to be split across different frequency triggers if needed.
+    Examples: TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY, TRG_AZURESQL_ADVENTUREWORKS_SILVER_LOAD_HOURLY
+    - Critical consistency rule: the {SYSTEM_IDENTIFIER} segment must exactly match that source's canonical identifier used everywhere else in metadata — specifically BRONZE_SCHEMA_ALIAS on the source's META_CONNECTION_ENDPOINT. One source system = one identifier, decided once at onboarding, reused consistently across trigger names, schema names, and any future source-facing labels. (E.g., the existing FabricTraining source uses FABRICTRAINING_INGESTXCEL consistently as both its schema alias and its trigger-name segment.)
+    - PL_Master_Orchestrator derives Bronze/Silver/Gold trigger names from two parameters (SystemIdentifier, Frequency) rather than hardcoding full trigger name strings — each system+frequency combination gets its own independent Fabric schedule trigger invoking the orchestrator with just those two values.
 - **Folder structure (Git-synced repo):** [describe layout — e.g.
   `/notebooks`, `/pipelines`, `/sql`, `/docs`]
 - **Branching strategy:** Follow the industry best practices
