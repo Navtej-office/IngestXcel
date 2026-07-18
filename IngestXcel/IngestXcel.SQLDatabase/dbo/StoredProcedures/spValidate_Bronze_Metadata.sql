@@ -1,0 +1,122 @@
+/* ============================================================
+   Name        : spValidate_Bronze_Metadata
+   Purpose     : Pre-flight check for a Bronze trigger batch —
+                 flags orchestration rows with missing or invalid
+                 metadata that would cause the pipeline to fail
+                 or silently misbehave before you ever run it.
+   Parameters  : @TriggerName VARCHAR(500)
+   Returns     : One row per active entity under the trigger, with
+                 VALIDATION_STATUS ('OK' or 'ISSUES_FOUND') and
+                 VALIDATION_ISSUES (semicolon-separated list of
+                 problems, NULL if none).
+   Notes       : Updated post-Phase-0 for: CONNECTION_ID (renamed
+                 from FABRIC_CONNECTION_ID), and the new required
+                 EXECUTION_METHOD field (replaces the retired
+                 SCHEMA_EVOLUTION_REQUIRED flag). Only checks
+                 EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK' rows —
+                 extensibility rows are handled by separate logic.
+   ============================================================ */
+
+CREATE   PROCEDURE [DBO].[spValidate_Bronze_Metadata]
+    @TriggerName VARCHAR(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH SourceProps AS (
+        SELECT
+            META_CONNECTION_ENDPOINT_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'CONNECTION_ID'       THEN PROPERTY_VALUE END) AS SOURCE_CONNECTION_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'WORKSPACE_ID'        THEN PROPERTY_VALUE END) AS SOURCE_WORKSPACE_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'SQLDATABASE_ID'      THEN PROPERTY_VALUE END) AS SOURCE_SQLDATABASE_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'BRONZE_SCHEMA_ALIAS' THEN PROPERTY_VALUE END) AS TARGET_SCHEMA_NAME
+        FROM [DBO].[META_CONNECTION_PROPERTY]
+        WHERE IS_ACTIVEYN = 'Y'
+        GROUP BY META_CONNECTION_ENDPOINT_ID
+    ),
+    TargetProps AS (
+        SELECT
+            META_CONNECTION_ENDPOINT_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'WORKSPACE_ID' THEN PROPERTY_VALUE END) AS TARGET_WORKSPACE_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'LAKEHOUSE_ID' THEN PROPERTY_VALUE END) AS TARGET_LAKEHOUSE_ID
+        FROM [DBO].[META_CONNECTION_PROPERTY]
+        WHERE IS_ACTIVEYN = 'Y'
+        GROUP BY META_CONNECTION_ENDPOINT_ID
+    ),
+    Checked AS (
+        SELECT
+            O.META_ORCHESTRATION_ID,
+            O.SOURCE_ENTITY_NAME,
+            O.PROCESSING_METHOD,
+            SRC_EP.DATA_ENDPOINT_TECH_TYPE AS SOURCE_TECH_TYPE,
+            SP.SOURCE_CONNECTION_ID,
+            SP.TARGET_SCHEMA_NAME,
+            TP.TARGET_WORKSPACE_ID,
+            TP.TARGET_LAKEHOUSE_ID,
+            O.TARGET_ENTITY,
+            O.PRIMARY_KEYS,
+            WM.CONFIGURATION_VALUE AS WATERMARK_COLUMN,
+            EM.CONFIGURATION_VALUE AS EXECUTION_METHOD,
+
+            CONCAT(
+                CASE WHEN SP.SOURCE_CONNECTION_ID IS NULL AND SRC_EP.DATA_ENDPOINT_TECH_TYPE IN ('FABRIC_SQLDB','AZURE_SQL')
+                     THEN 'Missing CONNECTION_ID property; ' END,
+                CASE WHEN SP.TARGET_SCHEMA_NAME IS NULL THEN 'Missing BRONZE_SCHEMA_ALIAS on source endpoint; ' END,
+                CASE WHEN TP.TARGET_WORKSPACE_ID IS NULL THEN 'Missing target WORKSPACE_ID property; ' END,
+                CASE WHEN TP.TARGET_LAKEHOUSE_ID IS NULL THEN 'Missing target LAKEHOUSE_ID property; ' END,
+                CASE WHEN O.TARGET_ENTITY IS NULL OR O.TARGET_ENTITY = '' THEN 'Missing TARGET_ENTITY; ' END,
+                CASE WHEN O.PRIMARY_KEYS IS NULL OR O.PRIMARY_KEYS = '' THEN 'Missing PRIMARY_KEYS; ' END,
+                CASE WHEN O.PROCESSING_METHOD NOT IN ('FULL','INCREMENTAL')
+                     THEN CONCAT('Invalid PROCESSING_METHOD ''', O.PROCESSING_METHOD, ''''';') END,
+                CASE WHEN O.PROCESSING_METHOD = 'INCREMENTAL' AND WM.CONFIGURATION_VALUE IS NULL
+                     THEN 'INCREMENTAL entity missing BRONZE WATERMARK_COLUMN config; ' END,
+                CASE WHEN EM.CONFIGURATION_VALUE IS NULL
+                     THEN 'Missing required BRONZE EXECUTION_METHOD; ' END,
+                CASE WHEN EM.CONFIGURATION_VALUE IS NOT NULL AND EM.CONFIGURATION_VALUE NOT IN ('PIPELINE','NOTEBOOK')
+                     THEN CONCAT('Invalid EXECUTION_METHOD ''', EM.CONFIGURATION_VALUE, ''''';') END
+            ) AS VALIDATION_ISSUES
+
+        FROM [DBO].[META_ORCHESTRATION] O
+        INNER JOIN [DBO].[META_SOURCE_ENTITY] SE
+            ON SE.SOURCE_ENTITY_ID = O.SOURCE_ENTITY_ID
+        INNER JOIN [DBO].[META_CONNECTION_ENDPOINT] SRC_EP
+            ON SRC_EP.META_CONNECTION_ENDPOINT_ID = SE.SOURCE_CONNECTION_ENDPOINT_ID
+        LEFT JOIN SourceProps SP
+            ON SP.META_CONNECTION_ENDPOINT_ID = SRC_EP.META_CONNECTION_ENDPOINT_ID
+        INNER JOIN [DBO].[META_CONNECTION_ENDPOINT] TGT_EP
+            ON TGT_EP.META_CONNECTION_ENDPOINT_ID = O.META_CONNECTION_ENDPOINT_ID
+        LEFT JOIN TargetProps TP
+            ON TP.META_CONNECTION_ENDPOINT_ID = TGT_EP.META_CONNECTION_ENDPOINT_ID
+        LEFT JOIN [DBO].[META_CONFIGURATION_CORE] WM
+            ON WM.SOURCE_ENTITY_ID       = O.SOURCE_ENTITY_ID
+            AND WM.CONFIGURATION_CATEGORY = 'BRONZE'
+            AND WM.CONFIGURATION_NAME     = 'WATERMARK_COLUMN'
+            AND WM.IS_ACTIVEYN            = 'Y'
+        LEFT JOIN [DBO].[META_CONFIGURATION_CORE] EM
+            ON EM.SOURCE_ENTITY_ID       = O.SOURCE_ENTITY_ID
+            AND EM.CONFIGURATION_CATEGORY = 'BRONZE'
+            AND EM.CONFIGURATION_NAME     = 'EXECUTION_METHOD'
+            AND EM.IS_ACTIVEYN            = 'Y'
+
+        WHERE O.TRIGGER_NAME          = @TriggerName
+          AND O.IS_ACTIVEYN           = 'Y'
+          AND SRC_EP.IS_ACTIVEYN      = 'Y'
+          AND TGT_EP.IS_ACTIVEYN      = 'Y'
+          AND O.EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
+    )
+    SELECT
+        META_ORCHESTRATION_ID,
+        SOURCE_ENTITY_NAME,
+        PROCESSING_METHOD,
+        SOURCE_TECH_TYPE,
+        EXECUTION_METHOD,
+        TARGET_ENTITY,
+        TARGET_SCHEMA_NAME,
+        CASE WHEN NULLIF(VALIDATION_ISSUES, '') IS NULL THEN 'OK' ELSE 'ISSUES_FOUND' END AS VALIDATION_STATUS,
+        NULLIF(VALIDATION_ISSUES, '') AS VALIDATION_ISSUES
+    FROM Checked
+    ORDER BY VALIDATION_STATUS DESC, SOURCE_ENTITY_NAME;
+END
+
+GO
+

@@ -2,24 +2,43 @@
    Name        : spGet_Bronze_Batch
    Purpose     : Returns one flat row per active Bronze entity
                  for a given trigger — source connection details,
-                 target connection details, and the Bronze
-                 watermark column (if incremental) all pivoted
-                 into named columns, ready for a pipeline Lookup
-                 activity to consume via item().<column_name>.
-   Parameters  : @TriggerName VARCHAR(500) — e.g. 'TRG_BRONZE_LOAD_DAILY'
+                 target connection details, Bronze watermark
+                 column (if incremental), and EXECUTION_METHOD
+                 all pivoted into named columns, ready for a
+                 pipeline Lookup activity to consume via
+                 item().<column_name>.
+   Parameters  : @TriggerName VARCHAR(500) — one trigger per
+                 source system/layer/frequency, e.g.
+                 'TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY'
+                 or 'TRG_AZURESQL_NAVTEJ_FABRIC_TRAINING_BRONZE_LOAD_DAILY'
    Returns     : One row per active FRAMEWORK-mode orchestration
                  row under that trigger, ordered by ORDER_OF_OPERATIONS.
-   Notes       : Only returns EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
+                 Property columns are generic across tech types —
+                 FABRIC_SQLDB rows populate SOURCE_WORKSPACE_ID/
+                 SOURCE_SQLDATABASE_ID; AZURE_SQL rows populate
+                 SQL_SERVER_HOST/SQL_SERVER_PORT/SOURCE_DATABASE_NAME;
+                 both populate SOURCE_CONNECTION_ID. Unused columns
+                 for a given tech type are simply NULL.
+   Notes       : SOURCE_CONNECTION_ID (renamed from
+                 SOURCE_FABRIC_CONNECTION_ID / property
+                 FABRIC_CONNECTION_ID → CONNECTION_ID, per Phase 0)
+                 since it's no longer Fabric-specific once Azure
+                 SQL also needs one. EXECUTION_METHOD added —
+                 required per entity since Phase 0, pipeline
+                 branches Pipeline vs Notebook execution on it.
+                 Only returns EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
                  rows — extensibility rows (STORED_PROCEDURE/
                  NOTEBOOK/PIPELINE/DATAFLOW_GEN2) are handled
                  elsewhere, not by this standard Bronze copy path.
    ============================================================ */
 
 CREATE   PROCEDURE [DBO].[spGet_Bronze_Batch]
-    @TriggerName VARCHAR(500)
+    @TriggerName VARCHAR(500),
+    @TargetEntityIds VARCHAR(4000) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET @TargetEntityIds = ISNULL(@TargetEntityIds, '');  -- defends against Fabric passing NULL when the pipeline parameter has no default
 
     ;WITH SourceProps AS (
         SELECT
@@ -27,7 +46,7 @@ BEGIN
             MAX(CASE WHEN PROPERTY_NAME = 'SQL_SERVER_HOST' THEN PROPERTY_VALUE END) AS SQL_SERVER_HOST,
             MAX(CASE WHEN PROPERTY_NAME = 'SQL_SERVER_PORT' THEN PROPERTY_VALUE END) AS SQL_SERVER_PORT,
             MAX(CASE WHEN PROPERTY_NAME = 'DATABASE_NAME'   THEN PROPERTY_VALUE END) AS SOURCE_DATABASE_NAME,
-            MAX(CASE WHEN PROPERTY_NAME = 'FABRIC_CONNECTION_ID' THEN PROPERTY_VALUE END) AS SOURCE_FABRIC_CONNECTION_ID,
+            MAX(CASE WHEN PROPERTY_NAME = 'CONNECTION_ID' THEN PROPERTY_VALUE END) AS SOURCE_CONNECTION_ID,
             MAX(CASE WHEN PROPERTY_NAME = 'WORKSPACE_ID' THEN PROPERTY_VALUE END) AS SOURCE_WORKSPACE_ID,
             MAX(CASE WHEN PROPERTY_NAME = 'SQLDATABASE_ID' THEN PROPERTY_VALUE END) AS SOURCE_SQLDATABASE_ID,
             MAX(CASE WHEN PROPERTY_NAME = 'BRONZE_SCHEMA_ALIAS' THEN PROPERTY_VALUE END) AS TARGET_SCHEMA_NAME
@@ -61,7 +80,7 @@ BEGIN
         SP.SQL_SERVER_HOST,
         SP.SQL_SERVER_PORT,
         SP.SOURCE_DATABASE_NAME,
-        SP.SOURCE_FABRIC_CONNECTION_ID,
+        SP.SOURCE_CONNECTION_ID,
         LOWER(SP.SOURCE_WORKSPACE_ID)   AS SOURCE_WORKSPACE_ID,   -- OneLake path validation is case-sensitive and rejects uppercase GUID chars, even though a GUID is case-insensitive by definition
         LOWER(SP.SOURCE_SQLDATABASE_ID) AS SOURCE_SQLDATABASE_ID, -- same reason — protects against a future source registered with an uppercase-pasted GUID
         SP.TARGET_SCHEMA_NAME,  -- Bronze schema is keyed off the SOURCE system, not the target Lakehouse, to avoid cross-source table-name collisions
@@ -72,7 +91,8 @@ BEGIN
         LOWER(TP.TARGET_WORKSPACE_ID)  AS TARGET_WORKSPACE_ID,  -- root cause of a real production bug: an uppercase Workspace GUID here made the Copy activity's OneLake "filesystem" path validation fail outright
         LOWER(TP.TARGET_LAKEHOUSE_ID)  AS TARGET_LAKEHOUSE_ID,  -- same OneLake path validation rule applies to the Lakehouse ID segment
 
-        WM.CONFIGURATION_VALUE AS WATERMARK_COLUMN
+        WM.CONFIGURATION_VALUE AS WATERMARK_COLUMN,
+        EM.CONFIGURATION_VALUE AS EXECUTION_METHOD  -- PIPELINE or NOTEBOOK; required per entity since Phase 0 — pipeline branches on this
 
     FROM [DBO].[META_ORCHESTRATION] O
     INNER JOIN [DBO].[META_SOURCE_ENTITY] SE
@@ -90,12 +110,20 @@ BEGIN
         AND WM.CONFIGURATION_CATEGORY = 'BRONZE'
         AND WM.CONFIGURATION_NAME     = 'WATERMARK_COLUMN'
         AND WM.IS_ACTIVEYN            = 'Y'
+    LEFT JOIN [DBO].[META_CONFIGURATION_CORE] EM
+        ON EM.SOURCE_ENTITY_ID       = O.SOURCE_ENTITY_ID
+        AND EM.CONFIGURATION_CATEGORY = 'BRONZE'
+        AND EM.CONFIGURATION_NAME     = 'EXECUTION_METHOD'
+        AND EM.IS_ACTIVEYN            = 'Y'
 
     WHERE O.TRIGGER_NAME          = @TriggerName
       AND O.IS_ACTIVEYN           = 'Y'
       AND SRC_EP.IS_ACTIVEYN      = 'Y'
       AND TGT_EP.IS_ACTIVEYN      = 'Y'
       AND O.EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
+      AND (@TargetEntityIds = '' OR O.META_ORCHESTRATION_ID IN (
+            SELECT CAST(value AS INT) FROM STRING_SPLIT(@TargetEntityIds, ',')
+          ))
     ORDER BY O.ORDER_OF_OPERATIONS;
 END
 
