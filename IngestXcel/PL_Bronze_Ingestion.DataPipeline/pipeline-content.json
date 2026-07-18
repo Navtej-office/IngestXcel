@@ -1,0 +1,75 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "FabricSqlDatabaseSource",
+            "sqlReaderStoredProcedureName": "spGet_Bronze_Batch",
+            "storedProcedureParameters": {
+              "TriggerName ": {
+                "value": "@pipeline().parameters.TriggerName",
+                "type": "String"
+              },
+              "TargetEntityIds": {
+                "value": "@pipeline().parameters.TargetEntityIds",
+                "type": "String"
+              }
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "FabricSqlDatabaseTable",
+            "schema": [],
+            "connectionSettings": {
+              "name": "IngestXcel",
+              "properties": {
+                "type": "FabricSqlDatabase",
+                "typeProperties": {
+                  "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "externalReferences": {
+                  "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Get Bronze Batch",
+        "dependsOn": []
+      }
+    ],
+    "parameters": {
+      "TriggerName": {
+        "type": "string",
+        "defaultValue": "TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY"
+      },
+      "MaxConcurrency": {
+        "type": "int",
+        "defaultValue": 4
+      },
+      "TargetEntityIds": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "PipelineStartTime": {
+        "type": "String",
+        "defaultValue": "@utcNow()"
+      }
+    }
+  }
+}
