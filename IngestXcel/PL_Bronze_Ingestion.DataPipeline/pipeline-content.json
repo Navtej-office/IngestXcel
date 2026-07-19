@@ -204,14 +204,300 @@
                     "value": "PIPELINE_FABRIC_SQLDB",
                     "activities": [
                       {
-                        "type": "Fail",
+                        "type": "Copy",
                         "typeProperties": {
-                          "message": "FabricSQL branch",
-                          "errorCode": "2000"
+                          "source": {
+                            "type": "FabricSqlDatabaseSource",
+                            "sqlReaderQuery": "@if(\r\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\r\n  )",
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "FabricSqlDatabaseTable",
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "0dadf841_5113_4e24_a752_59a3bb2b5429",
+                                "properties": {
+                                  "type": "FabricSqlDatabase",
+                                  "typeProperties": {
+                                    "artifactId": "@item().SOURCE_SQLDATABASE_ID",
+                                    "workspaceId": "@item().SOURCE_WORKSPACE_ID"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "@item().SOURCE_CONNECTION_ID"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Append",
+                            "applyVOrder": false,
+                            "partitionOption": "None",
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "schema": {
+                                  "value": "@item().TARGET_SCHEMA_NAME",
+                                  "type": "Expression"
+                                },
+                                "table": {
+                                  "value": "@item().TARGET_ENTITY",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "d9175f61_0e48_497d_98f2_b2505496a161",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
                         },
-                        "name": "Fail2",
-                        "description": "fabricsql",
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy Fabric SQLDB Source",
                         "dependsOn": []
+                      },
+                      {
+                        "type": "Lookup",
+                        "typeProperties": {
+                          "source": {
+                            "type": "FabricSqlDatabaseSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n  equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n  concat('SELECT MAX(', item().WATERMARK_COLUMN, ') AS NewWatermark FROM ', item().SOURCE_ENTITY_NAME),\n  'SELECT CAST(NULL AS VARCHAR(50)) AS NewWatermark'\n)",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00"
+                          },
+                          "datasetSettings": {
+                            "type": "FabricSqlDatabaseTable",
+                            "schema": [],
+                            "connectionSettings": {
+                              "name": "7f77764c_5c40_49b3_a381_e42bea8da1cd",
+                              "properties": {
+                                "type": "FabricSqlDatabase",
+                                "typeProperties": {
+                                  "artifactId": "@item().SOURCE_SQLDATABASE_ID",
+                                  "workspaceId": "@item().SOURCE_WORKSPACE_ID"
+                                },
+                                "externalReferences": {
+                                  "connection": "@item().SOURCE_CONNECTION_ID"
+                                },
+                                "annotations": []
+                              }
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Get New Watermark",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, null)",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Get New Watermark').output.firstRow.NewWatermark",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success",
+                        "dependsOn": [
+                          {
+                            "activity": "Get New Watermark",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "Int64",
+                                  "value": "@activity('Copy Fabric SQLDB Source').Error.Message",
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
                       }
                     ]
                   },
