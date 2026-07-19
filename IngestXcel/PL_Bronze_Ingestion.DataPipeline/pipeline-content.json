@@ -191,6 +191,68 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "Switch",
+              "typeProperties": {
+                "on": {
+                  "value": "@concat(item().EXECUTION_METHOD, '_', item().SOURCE_TECH_TYPE)",
+                  "type": "Expression"
+                },
+                "cases": [
+                  {
+                    "value": "PIPELINE_FABRIC_SQLDB",
+                    "activities": [
+                      {
+                        "type": "Fail",
+                        "typeProperties": {
+                          "message": "FabricSQL branch",
+                          "errorCode": "2000"
+                        },
+                        "name": "Fail2",
+                        "description": "fabricsql",
+                        "dependsOn": []
+                      }
+                    ]
+                  },
+                  {
+                    "value": "PIPELINE_AZURE_SQL",
+                    "activities": [
+                      {
+                        "type": "Fail",
+                        "typeProperties": {
+                          "message": "azure sql",
+                          "errorCode": "3000"
+                        },
+                        "name": "Fail4",
+                        "description": "Azuresqldb branch",
+                        "dependsOn": []
+                      }
+                    ]
+                  }
+                ],
+                "defaultActivities": [
+                  {
+                    "type": "Fail",
+                    "typeProperties": {
+                      "message": "Unsupported EXECUTION_METHOD/SOURCE_TECH_TYPE combination",
+                      "errorCode": "1000"
+                    },
+                    "name": "Fail_default_case",
+                    "description": "Unsupported EXECUTION_METHOD/SOURCE_TECH_TYPE combination",
+                    "dependsOn": []
+                  }
+                ]
+              },
+              "name": "Switch Execution Route",
+              "dependsOn": [
+                {
+                  "activity": "Get Last Watermark",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
             }
           ]
         },
