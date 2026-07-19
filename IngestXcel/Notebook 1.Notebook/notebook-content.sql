@@ -246,3 +246,15 @@ spark.sql("SHOW TABLES IN fabrictraining_ingestxcel").show(truncate=False)
 -- META   "language": "python",
 -- META   "language_group": "synapse_pyspark"
 -- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC spark.sql("SELECT BusinessEntityID, ModifiedDate FROM fabrictraining_ingestxcel.person_businessentity WHERE BusinessEntityID IN (1,2) ORDER BY BusinessEntityID, ModifiedDate").show()
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }

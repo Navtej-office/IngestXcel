@@ -9,11 +9,17 @@
             "sqlReaderStoredProcedureName": "spGet_Bronze_Batch",
             "storedProcedureParameters": {
               "TriggerName ": {
-                "value": "@pipeline().parameters.TriggerName",
+                "value": {
+                  "value": "@pipeline().parameters.TriggerName",
+                  "type": "Expression"
+                },
                 "type": "String"
               },
               "TargetEntityIds": {
-                "value": "@pipeline().parameters.TargetEntityIds",
+                "value": {
+                  "value": "@pipeline().parameters.TargetEntityIds",
+                  "type": "Expression"
+                },
                 "type": "String"
               }
             },
@@ -81,7 +87,10 @@
                       {
                         "name": "META_ORCHESTRATION_ID",
                         "type": "Int32",
-                        "value": "@item().META_ORCHESTRATION_ID",
+                        "value": {
+                          "value": "@item().META_ORCHESTRATION_ID",
+                          "type": "Expression"
+                        },
                         "direction": "Input"
                       },
                       {
@@ -208,7 +217,10 @@
                         "typeProperties": {
                           "source": {
                             "type": "FabricSqlDatabaseSource",
-                            "sqlReaderQuery": "@if(\r\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\r\n  )",
+                            "sqlReaderQuery": {
+                              "value": "@if(\r\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\r\n  )",
+                              "type": "Expression"
+                            },
                             "partitionOption": "None",
                             "queryTimeout": "02:00:00",
                             "datasetSettings": {
@@ -374,7 +386,10 @@
                                 {
                                   "name": "RowsWritten",
                                   "type": "Int64",
-                                  "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
                                   "direction": "Input"
                                 },
                                 {
@@ -460,7 +475,10 @@
                                 {
                                   "name": "ErrorMessage",
                                   "type": "Int64",
-                                  "value": "@activity('Copy Fabric SQLDB Source').Error.Message",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').Error.Message",
+                                    "type": "Expression"
+                                  },
                                   "direction": "Input"
                                 }
                               ]
@@ -505,14 +523,299 @@
                     "value": "PIPELINE_AZURE_SQL",
                     "activities": [
                       {
-                        "type": "Fail",
+                        "type": "Copy",
                         "typeProperties": {
-                          "message": "azure sql",
-                          "errorCode": "3000"
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\n  )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "AzureSqlTable",
+                              "typeProperties": {
+                                "database": {
+                                  "value": "@item().SOURCE_DATABASE_NAME",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "externalReferences": {
+                                "connection": "@item().SOURCE_CONNECTION_ID"
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Append",
+                            "applyVOrder": false,
+                            "partitionOption": "None",
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "schema": {
+                                  "value": "@item().TARGET_SCHEMA_NAME",
+                                  "type": "Expression"
+                                },
+                                "table": {
+                                  "value": "@item().TARGET_ENTITY",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "677e4f80_2d20_46c7_a577_777b3a083101",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
                         },
-                        "name": "Fail4",
-                        "description": "Azuresqldb branch",
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy AzureSQLDB Source",
                         "dependsOn": []
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, null)",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Get New Watermark__AzureSQLDB').output.firstRow.NewWatermark",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_copy_AzureSQL",
+                        "dependsOn": [
+                          {
+                            "activity": "Get New Watermark__AzureSQLDB",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').Error.Message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_copy_azure SQLDB",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Lookup",
+                        "typeProperties": {
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n     equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n     concat('SELECT MAX(', item().WATERMARK_COLUMN, ') AS NewWatermark FROM ', item().SOURCE_ENTITY_NAME),\n     'SELECT CAST(NULL AS VARCHAR(50)) AS NewWatermark'\n   )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00"
+                          },
+                          "datasetSettings": {
+                            "type": "AzureSqlTable",
+                            "typeProperties": {
+                              "database": {
+                                "value": "@item().SOURCE_DATABASE_NAME",
+                                "type": "Expression"
+                              }
+                            },
+                            "schema": [],
+                            "externalReferences": {
+                              "connection": "@item().SOURCE_CONNECTION_ID"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Get New Watermark__AzureSQLDB",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
                       }
                     ]
                   }
@@ -556,7 +859,10 @@
         "type": "SetVariable",
         "typeProperties": {
           "variableName": "PipelineStartTime",
-          "value": "@utcNow()"
+          "value": {
+            "value": "@utcNow()",
+            "type": "Expression"
+          }
         },
         "policy": {
           "secureInput": false,
