@@ -32,7 +32,7 @@
                  elsewhere, not by this standard Bronze copy path.
    ============================================================ */
 
-CREATE   PROCEDURE [DBO].[spGet_Bronze_Batch]
+CREATE     PROCEDURE [dbo].[spGet_Bronze_Batch]
     @TriggerName VARCHAR(500),
     @TargetEntityIds VARCHAR(4000) = ''
 AS
@@ -92,7 +92,8 @@ BEGIN
         LOWER(TP.TARGET_LAKEHOUSE_ID)  AS TARGET_LAKEHOUSE_ID,  -- same OneLake path validation rule applies to the Lakehouse ID segment
 
         WM.CONFIGURATION_VALUE AS WATERMARK_COLUMN,
-        EM.CONFIGURATION_VALUE AS EXECUTION_METHOD  -- PIPELINE or NOTEBOOK; required per entity since Phase 0 — pipeline branches on this
+        EM.CONFIGURATION_VALUE AS EXECUTION_METHOD,  -- PIPELINE or NOTEBOOK; required per entity since Phase 0 — pipeline branches on this
+        SQO.CONFIGURATION_VALUE AS SOURCE_QUERY_OVERRIDE -- NOTEBOOK-only; NULL for every PIPELINE entity and for any NOTEBOOK entity that doesn't need one. When NULL, the pipeline's Stage Fabric SQLDB Source activity falls back to the same auto-generated SELECT * FROM ... WHERE ... expression the PIPELINE cases already use.
 
     FROM [DBO].[META_ORCHESTRATION] O
     INNER JOIN [DBO].[META_SOURCE_ENTITY] SE
@@ -115,6 +116,11 @@ BEGIN
         AND EM.CONFIGURATION_CATEGORY = 'BRONZE'
         AND EM.CONFIGURATION_NAME     = 'EXECUTION_METHOD'
         AND EM.IS_ACTIVEYN            = 'Y'
+    LEFT JOIN [DBO].[META_CONFIGURATION_CORE] SQO
+        ON SQO.SOURCE_ENTITY_ID       = O.SOURCE_ENTITY_ID
+        AND SQO.CONFIGURATION_CATEGORY = 'BRONZE'
+        AND SQO.CONFIGURATION_NAME     = 'SOURCE_QUERY_OVERRIDE'
+        AND SQO.IS_ACTIVEYN            = 'Y'
 
     WHERE O.TRIGGER_NAME          = @TriggerName
       AND O.IS_ACTIVEYN           = 'Y'

@@ -258,3 +258,27 @@ spark.sql("SHOW TABLES IN fabrictraining_ingestxcel").show(truncate=False)
 -- META   "language": "python",
 -- META   "language_group": "synapse_pyspark"
 -- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC # SCRATCH CELL - throwaway, not part of the notebook's 6 real cells.
+-- MAGIC # Creates a tiny synthetic staged-Parquet file so we can test Cells 3-6
+-- MAGIC # without a real pipeline run.
+-- MAGIC test_data = [
+-- MAGIC     (1, "1970 Napa Ct", "None", "Bothell", 1, "98011", "POINT (-122.207 47.760)", "aaaaaaaa-0000-0000-0000-000000000001", "2026-06-01 10:00:00"),
+-- MAGIC     (2, "9833 Mt. Dias Blv.", "None", "Bothell", 1, "98011", "POINT (-122.208 47.761)", "aaaaaaaa-0000-0000-0000-000000000002", "2026-07-01 09:30:00"),
+-- MAGIC ]
+-- MAGIC test_columns = ["AddressID", "AddressLine1", "AddressLine2", "City", "StateProvinceID", "PostalCode", "SpatialLocation", "rowguid", "ModifiedDate"]
+-- MAGIC test_df = spark.createDataFrame(test_data, test_columns)
+-- MAGIC 
+-- MAGIC test_staging_path = f"abfss://{'2773bec8-6438-4872-b2ee-d34f1a32b3a9'}@onelake.dfs.fabric.microsoft.com/{'7e491b48-5978-4a73-bbe7-b98df9812e65'}/Files/test_staging/person_address_test/"
+-- MAGIC test_df.write.mode("overwrite").parquet(test_staging_path)
+-- MAGIC print(test_staging_path)
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
