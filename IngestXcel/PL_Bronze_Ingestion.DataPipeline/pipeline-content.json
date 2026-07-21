@@ -1159,7 +1159,7 @@
                                   "name": "ErrorMessage",
                                   "type": "String",
                                   "value": {
-                                    "value": "@coalesce(activity('Stage Fabric SQLDB Source').error.message, activity('Load Staged Parquet to Bronze').error.message)",
+                                    "value": "@activity('Load Staged Parquet to Bronze').error.message",
                                     "type": "Expression"
                                   },
                                   "direction": "Input"
@@ -1196,14 +1196,85 @@
                           "secureInput": false,
                           "secureOutput": false
                         },
-                        "name": "Complete Log Failure_Notebook",
+                        "name": "Complete Log Failure_Notebook_Load",
                         "dependsOn": [
                           {
                             "activity": "Load Staged Parquet to Bronze",
                             "dependencyConditions": [
                               "Failed"
                             ]
-                          },
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Stage Fabric SQLDB Source').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Stage",
+                        "dependsOn": [
                           {
                             "activity": "Stage Fabric SQLDB Source",
                             "dependencyConditions": [
