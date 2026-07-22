@@ -168,6 +168,39 @@ Decided: SOURCE_QUERY_OVERRIDE stores the column list only — it never includes
   dbo.DimDate was cut over from EXECUTION_METHOD='PIPELINE' to 'NOTEBOOK', proving the Bronze NOTEBOOK path generalizes across source tech types, not just Fabric SQLDB. The Switch case (NOTEBOOK_AZURE_SQL) mirrors NOTEBOOK_FABRIC_SQLDB exactly — a "Stage AzureSQLDB Source" Copy activity (AzureSqlSource, not FabricSqlDatabaseSource) into the same ParquetSink/    Files pattern, feeding the same notebook. Critically, NB_Bronze_Staged_Ingestion itself required no changes at all — it only ever reads whatever Parquet was staged and writes Delta, with no awareness of which source connector produced the staged files. This is real validation that the stage-to-Parquet design (item #30) genuinely decouples the notebook from     source-specific concerns, not just for the one entity it was built against.  DimDate needed no SOURCE_QUERY_OVERRIDE (no known type-incompatibility issue) — proving the override is opt-in, not a mandatory step for every NOTEBOOK entity.
 40. **Schema constraint discovered: EXECUTION_METHOD cutover must be an in-place UPDATE, never deactivate-old-insert-new**
     UIDX_META_ORCHESTRATION is unique on (TRIGGER_NAME, SOURCE_ENTITY_ID), and UIDX_META_CONFIGURATION_CORE is unique on (SOURCE_ENTITY_ID, CONFIGURATION_CATEGORY, CONFIGURATION_NAME) — neither includes IS_ACTIVEYN in the key. This means the schema hard-enforces exactly one orchestration row and one EXECUTION_METHOD config row per source entity, active or not; deactivating an old row does not free up the key for a new one. Discovered when migrating dbo.DimDate from PIPELINE to NOTEBOOK: an initial "deactivate old row, insert a new one" attempt failed on both Unique indexes. The correct, only-possible approach is an in-place UPDATE of the existing CONFIGURATION_VALUE (and, if ever needed, TARGET_ENTITY/    PROCESSING_METHOD/etc. on the same META_ORCHESTRATION row) — there is no "keep the old row as historical record" option under this schema. Rollback  is simply running the same UPDATE with the prior value.
+41. **Silver Layer — v1 Feature Scope (Must-Have + Should-Have only)**
+    Evaluated against the ISD Accelerator reference framework's full Curating-Data feature surface (merge types, transformation library, DQ rule engine, post-write reconciliation, surrogate keys, custom functions) and against industry-standard medallion architecture practice, to decide what actually earns the name "Silver" versus what's framework richness accumulated over
+    time. Deliberately scoped down, same philosophy as the Gold placeholder (item #28) and skipping ISD's full Bronze engine (item #30) — build only what's needed now, document the rest as a known deferral rather than silently omitting it.
+
+    MUST-HAVE (this is what makes it Silver, not optional):
+    - Merge/upsert logic: both SCD1 (simple upsert — the default for most entities) and SCD2 (historized with scd_start_date/scd_end_date, starting with Person.Address, whose SCD2_SETTINGS metadata is already seeded per the project plan)
+    - Deduplication: resolve to one row per primary key within a batch before merging, keeping the latest by watermark value
+    - Primary-key uniqueness enforcement: a duplicate primary key after dedup is quarantined, not silently merged and not a whole-batch failure
+    - Schema enforcement: target Delta table has a defined, typed schema;incoming data validated against it before merge
+    - Basic cleansing only: blank-to-null, string trimming — explicitly not the full transformation library (see NOT NOW below)
+    - Correct incremental extraction from Bronze, via the same watermark- column mechanism already proven in Bronze (see decision below — not Change Data Feed for v1)
+    - Quarantine mechanism: rows failing validation are written to an actual quarantine table (inspectable later), not merely counted;  ROWS_REJECTED in META_INGESTION_LOG reflects the count
+    - Auditability: reuses the existing META_INGESTION_LOG / spStart_Ingestion_Log / spComplete_Ingestion_Log pattern as-is — no new logging mechanism for Silver
+
+    SHOULD-HAVE:
+    - Post-write row-count reconciliation: compare rows merged vs. expected, logged at warn level, not blocking
+    - Schema drift policy: auto-evolve via mergeSchema, same posture as Bronze — not a stricter fail-on-drift policy
+    - Soft-delete propagation: capability documented now, not implemented until a real source with an actual delete-indicator column appears
+
+    NOT NOW (explicitly deferred, not silently omitted):
+    - Surrogate key generation and dimension-table attachment — industry- standard placement for this is Gold (Kimball dimensional modeling), not Silver; refines the existing Gold placeholder rather than introducing new Silver scope
+    - The full data_transformation_steps library (pivot/unpivot, joins, window functions, aggregation, string/datetime functions, entity resolution, etc.)
+    - The rich data_quality rule engine beyond basic PK/null checks (pattern validation, statistical anomaly detection, referential integrity, custom DQ functions)
+    - PII masking
+    - Custom-function escape hatches (custom_transformation_function,   
+      custom_data_quality_function, etc.)
+    - Execute-only delegated integrations (execute_warehouse_sp,
+      execute_fabric_notebook, execute_fabric_dataflow)
+
+    Two defaults chosen without a further round of confirmation, easy to override if wrong: (1) incremental extraction stays watermark-column- based, not Change Data Feed, since Bronze tables don't have CDF enabled today and enabling it retroactively is its own separate task, not a v1
+    requirement; (2) quarantined rows physically land in a table, not just a count, since a count alone isn't inspectable later.
+
+    Maps directly onto the project plan's existing Phase 4 tasks (4.1 SCD1, 4.2 SCD2, 4.3 quarantine via ROWS_REJECTED, 4.4 PL_Silver_Load wrapper, 4.5 post-write reconciliation, 4.6 E2E test) — this item formalizes what was already implicitly scoped there, rather than expanding it.
     
 
 
