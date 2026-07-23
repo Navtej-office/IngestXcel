@@ -1637,7 +1637,7 @@
                           "secureInput": false,
                           "secureOutput": false
                         },
-                        "name": "Complete Log Failure_Notebook_AzureSQL_Stage",
+                        "name": "Complete Log Failure_Notebook_Stage_AzureSQL",
                         "dependsOn": [
                           {
                             "activity": "Load Staged Parquet to Bronze_AzureSQL",
@@ -1714,7 +1714,7 @@
                           "secureInput": false,
                           "secureOutput": false
                         },
-                        "name": "omplete Log Failure_Notebook_AzureSQL_Stage",
+                        "name": "Complete Log Failure_Notebook_AzureSQL_Stage",
                         "dependsOn": [
                           {
                             "activity": "Stage AzureSQLDB Source",
