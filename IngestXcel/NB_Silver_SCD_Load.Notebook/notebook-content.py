@@ -32,14 +32,12 @@
 # hash-comparison + single-merge approach (see chat for the full walkthrough) — not invented from scratch.
 
 
-# CELL ********************
+# PARAMETERS CELL ********************
 
 # ================================================================
 # CELL 1 - PARAMETERS
 # ================================================================
-# Toggle this cell as the notebook's parameters cell in the Fabric UI.
-# Values below are placeholders; the pipeline overrides them at runtime.
-"""
+ 
 meta_orchestration_id = None
 source_workspace_id = None
 source_lakehouse_id = None
@@ -56,24 +54,7 @@ scd2_start_date_col = None  # only meaningful when scd_type = "SCD2"
 scd2_end_date_col = None
 scd2_current_flag_col = None
 quarantine_table_name = None
-"""
-
-meta_orchestration_id = 26
-source_workspace_id = "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
-source_lakehouse_id = "7e491b48-5978-4a73-bbe7-b98df9812e65"
-source_schema_name = "fabrictraining_ingestxcel"
-source_entity = "person_address"
-target_workspace_id = "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
-target_lakehouse_id = "0d793c52-9170-4eb5-b0b4-6bdf137c4403"
-target_entity = "person_address"
-primary_keys = "AddressID"
-watermark_column = "ModifiedDate"
-watermark_value_used = "1900-01-01"
-scd_type = "SCD2"
-scd2_start_date_col = "ModifiedDate"
-scd2_end_date_col = "SCD_END_DATE"
-scd2_current_flag_col = "IS_CURRENT"
-quarantine_table_name = "person_address_quarantine"
+ 
 
 # METADATA ********************
 
@@ -266,7 +247,8 @@ try:
                 spark.read.format("delta").load(target_path)
                 .filter(F.col(scd2_current_flag_col) == "Y")
             )
- 
+
+
             hash_exclude_cols = set(primary_key_list) | {watermark_column, scd2_start_date_col, scd2_end_date_col, scd2_current_flag_col}
             new_hash_cols = sorted([c for c in deduped_data.columns if c not in hash_exclude_cols])
             existing_hash_cols = sorted([c for c in existing_active.columns if c not in hash_exclude_cols])
@@ -278,11 +260,14 @@ try:
             changed_keys = compared.filter(
                 (F.col("existing_hash").isNotNull()) & (F.col("new_hash") != F.col("existing_hash"))
             ).select(*primary_key_list).distinct()
+
+
             new_keys = compared.filter(F.col("existing_hash").isNull()).select(*primary_key_list).distinct()
- 
+
+
             changed_new_rows = deduped_data.join(changed_keys, primary_key_list, "inner")
             brand_new_rows = deduped_data.join(new_keys, primary_key_list, "inner")
- 
+
             # Close out the old version of changed rows - join in the new
             # row's watermark value per-key to use as this row's end date.
             close_out_rows = (
@@ -293,23 +278,26 @@ try:
                 .withColumn(scd2_current_flag_col, F.lit("N"))
                 .drop("_new_ts")
             )
- 
+            #debugging
+         
             new_version_rows = (
                 changed_new_rows
                 .withColumn(scd2_start_date_col, F.col(watermark_column))
                 .withColumn(scd2_end_date_col, F.lit(None).cast(StringType()))
                 .withColumn(scd2_current_flag_col, F.lit("Y"))
             )
- 
+          
             brand_new_final = (
                 brand_new_rows
                 .withColumn(scd2_start_date_col, F.col(watermark_column))
                 .withColumn(scd2_end_date_col, F.lit(None).cast(StringType()))
                 .withColumn(scd2_current_flag_col, F.lit("Y"))
             )
- 
+           
+
             all_changes = close_out_rows.unionByName(new_version_rows, allowMissingColumns=True).unionByName(brand_new_final, allowMissingColumns=True)
- 
+                     
+            
             merge_condition = pk_join_condition + f" AND current.{scd2_current_flag_col} = 'Y' AND new.{scd2_current_flag_col} = 'N'"
             target_table = DeltaTable.forPath(spark, target_path)
             (

@@ -282,3 +282,75 @@ spark.sql("SHOW TABLES IN fabrictraining_ingestxcel").show(truncate=False)
 -- META   "language": "python",
 -- META   "language_group": "synapse_pyspark"
 -- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC # SCRATCH CELL - injects one synthetic null-PK row directly into Bronze,
+-- MAGIC # purely to test Silver's quarantine path. Not part of the real pipeline.
+-- MAGIC import uuid
+-- MAGIC from datetime import datetime
+-- MAGIC from pyspark.sql.types import StructType, StructField, IntegerType, StringType, TimestampType
+-- MAGIC 
+-- MAGIC schema = StructType([
+-- MAGIC     StructField("BusinessEntityID", IntegerType(), True),
+-- MAGIC     StructField("rowguid", StringType(), True),
+-- MAGIC     StructField("ModifiedDate", TimestampType(), True),
+-- MAGIC ])
+-- MAGIC 
+-- MAGIC test_data = [(None, str(uuid.uuid4()), datetime(2026, 7, 24, 0, 0, 0))]
+-- MAGIC test_df = spark.createDataFrame(test_data, schema=schema)
+-- MAGIC 
+-- MAGIC bronze_path = "abfss://2773bec8-6438-4872-b2ee-d34f1a32b3a9@onelake.dfs.fabric.microsoft.com/7e491b48-5978-4a73-bbe7-b98df9812e65/Tables/fabrictraining_ingestxcel/person_businessentity"
+-- MAGIC test_df.write.format("delta").mode("append").option("mergeSchema", "true").save(bronze_path)
+-- MAGIC print("Injected 1 synthetic null-PK row into Bronze")
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC spark.sql("""
+-- MAGIC ALTER TABLE delta.`abfss://2773bec8-6438-4872-b2ee-d34f1a32b3a9@onelake.dfs.fabric.microsoft.com/7e491b48-5978-4a73-bbe7-b98df9812e65/Tables/fabrictraining_ingestxcel/person_businessentity`
+-- MAGIC ALTER COLUMN BusinessEntityID DROP NOT NULL
+-- MAGIC """)
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS delta.`abfss://2773bec8-6438-4872-b2ee-d34f1a32b3a9@onelake.dfs.fabric.microsoft.com/0d793c52-9170-4eb5-b0b4-6bdf137c4403/Tables/fabrictraining_ingestxcel/person_businessentity_quarantine`
+-- MAGIC (BusinessEntityID INT, rowguid STRING, ModifiedDate TIMESTAMP)
+-- MAGIC USING DELTA
+-- MAGIC """)
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC mssparkutils.session.stop()
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
