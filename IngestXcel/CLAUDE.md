@@ -97,9 +97,14 @@ if a change seems warranted, flag it and ask before implementing.
     each source system, and for each schedule frequency, has its own trigger name and its own set of META_ORCHESTRATION rows — see Section 5's TRG_{SYSTEM_IDENTIFIER}_{LAYER}_LOAD_{FREQUENCY} convention (e.g. TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY). A single trigger therefore contains only one system's tables at a time — it does not span multiple source systems.
     - Cross-system parallelism is achieved by scheduling multiple independent Fabric triggers concurrently, each invoking PL_Master_Orchestrator with a different SystemIdentifier parameter — not by grouping systems within a shared trigger's execution.
     - Layer sequencing within one system is enforced at the pipeline level: PL_Master_Orchestrator derives that system's Bronze/Silver/Gold trigger names from its SystemIdentifier and Frequency parameters, and invokes each layer's pipeline in strict order via Execute Pipeline activities with waitOnCompletion = true — Silver never starts before Bronze completes for that system, and Gold never starts before Silver completes.
-    - Parallelism within one trigger (i.e., across the tables belonging to one system, at one layer) is achieved via a single flat ForEach with bounded concurrency (isSequential = false, Batch count = a MaxConcurrency pipeline parameter, default 4, configurable per run). This requires each Switch case / branch to be fully self-contained (its own logging completion steps referencing only its own activity outputs directly) — no pipeline variables shared across iterations, which are unsafe under concurrent execution.
-    This requires no additional metadata schema beyond what Section 3 already defines — TRIGGER_NAME, scoped per system/layer/frequency per Section 5, is sufficient.
+    - Parallelism within one trigger (i.e., across the tables belonging to one system, at one layer) is achieved via a single flat ForEach with bounded  concurrency: isSequential = false, Batch count = 10, set as a STATIC  value on the activity — NOT a pipeline parameter, since batchCount cannot accept dynamic content (confirmed platform limitation, item #24).  10 is per-system (this ForEach only ever sees one system's own tables, per item #18's per-system trigger model), comfortably covering every currently-registered and near-term-planned system's table count with real headroom, while remaining a genuine protective cap against       source-connection exhaustion rather than an effectively-uncapped  ceiling (batchCount's hard platform maximum is 50; Microsoft's own guidance for this setting recommends starting conservative at 5-10  specifically because real concurrency is bounded by connections to    actual source systems, not just Fabric compute capacity). Cross-system parallelism does not come from this setting at all — it comes from multiple independent trigger fires (see above), each with its own independent ForEach and independent batchCount=10 envelope. This       requires each Switch case / branch to be fully self-contained (its own logging completion steps referencing only its own activity outputs directly) — no pipeline variables shared across iterations, which are unsafe under concurrent execution.
 
+    Layer sequencing (Bronze before Silver before Gold) is justified by a data-
+    dependency fact, not a capacity-tier workaround: each layer's watermark-
+    based read only sees what the prior layer has already committed, so
+    running them concurrently would mean the later layer either finds nothing
+    new or reads a half-committed batch — true on any Fabric capacity tier,
+    trial or Premium, not specific to current dev-environment constraints.
 
 19. **Schedule Frequency Support** The metadata-driven ingestion framework shall support native fabric 
      scheduling /trigger feature and support  minimum scheduling frequency of once per hour. The framework shall also be designed to accommodate lower-frequency schedules (e.g., daily, weekly, or monthly)  
@@ -201,8 +206,6 @@ Decided: SOURCE_QUERY_OVERRIDE stores the column list only — it never includes
     requirement; (2) quarantined rows physically land in a table, not just a count, since a count alone isn't inspectable later.
 
     Maps directly onto the project plan's existing Phase 4 tasks (4.1 SCD1, 4.2 SCD2, 4.3 quarantine via ROWS_REJECTED, 4.4 PL_Silver_Load wrapper, 4.5 post-write reconciliation, 4.6 E2E test) — this item formalizes what was already implicitly scoped there, rather than expanding it.
-    
-
 
 ---
 
