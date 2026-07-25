@@ -75,7 +75,7 @@
 --
 -- =============================================================================
 
-CREATE     PROCEDURE [dbo].[spGet_Silver_Batch]
+CREATE      PROCEDURE [dbo].[spGet_Silver_Batch]
     @TriggerName VARCHAR(500),
     @TargetEntityIds VARCHAR(4000) = ''
 AS
@@ -171,9 +171,10 @@ BEGIN
       AND SRC_EP.IS_ACTIVEYN      = 'Y'
       AND TGT_EP.IS_ACTIVEYN      = 'Y'
       AND O.EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
-      AND (@TargetEntityIds = '' OR O.META_ORCHESTRATION_ID IN (
-            SELECT CAST(value AS INT) FROM STRING_SPLIT(@TargetEntityIds, ',')
-          ))
+    AND (@TargetEntityIds = '' OR O.META_ORCHESTRATION_ID IN (
+          SELECT CAST(value AS INT) FROM STRING_SPLIT(@TargetEntityIds, ',')
+          WHERE value <> ''
+        ))
     ORDER BY O.ORDER_OF_OPERATIONS;
 END
 

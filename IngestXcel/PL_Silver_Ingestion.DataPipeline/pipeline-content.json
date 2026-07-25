@@ -1,0 +1,573 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "PipelineStartTime",
+          "value": {
+            "value": "@utcNow()",
+            "type": "Expression"
+          }
+        },
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Set Pipeline Start Time",
+        "dependsOn": []
+      },
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "FabricSqlDatabaseSource",
+            "sqlReaderStoredProcedureName": "[dbo].[spGet_Silver_Batch]",
+            "storedProcedureParameters": {
+              "TriggerName ": {
+                "value": {
+                  "value": "@pipeline().parameters.TriggerName",
+                  "type": "Expression"
+                },
+                "type": "String"
+              },
+              "TargetEntityIds": {
+                "value": {
+                  "value": "@pipeline().parameters.TargetEntityIds",
+                  "type": "Expression"
+                },
+                "type": "String"
+              }
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "FabricSqlDatabaseTable",
+            "schema": [],
+            "connectionSettings": {
+              "name": "IngestXcel",
+              "properties": {
+                "type": "FabricSqlDatabase",
+                "typeProperties": {
+                  "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "externalReferences": {
+                  "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Get Silver Batch",
+        "dependsOn": [
+          {
+            "activity": "Set Pipeline Start Time",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "isSequential": false,
+          "batchCount": 10,
+          "items": {
+            "value": "@activity('Get Silver Batch').output.value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "EXEC [DBO].[spStart_Ingestion_Log]\r\n      @META_ORCHESTRATION_ID = @META_ORCHESTRATION_ID,\r\n      @TriggerExecutionId = @TriggerExecutionId,\r\n      @TriggerExecutionStartTime = @TriggerExecutionStartTime,\r\n      @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID OUTPUT",
+                      "type": "Expression"
+                    },
+                    "type": "Query",
+                    "parameters": [
+                      {
+                        "name": "META_ORCHESTRATION_ID",
+                        "type": "Int32",
+                        "value": {
+                          "value": "@item().META_ORCHESTRATION_ID",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "TriggerExecutionId",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().RunId",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "TriggerExecutionStartTime",
+                        "type": "String",
+                        "value": {
+                          "value": "@variables('PipelineStartTime')",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "META_INGESTION_LOG_ID",
+                        "type": "Int64",
+                        "value": "0",
+                        "direction": "Output"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "connectionSettings": {
+                "name": "IngestXcel",
+                "properties": {
+                  "type": "FabricSqlDatabase",
+                  "typeProperties": {
+                    "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "externalReferences": {
+                    "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Start Log",
+              "dependsOn": []
+            },
+            {
+              "type": "Lookup",
+              "typeProperties": {
+                "source": {
+                  "type": "FabricSqlDatabaseSource",
+                  "sqlReaderStoredProcedureName": "spGet_Last_Watermark",
+                  "storedProcedureParameters": {
+                    "META_ORCHESTRATION_ID": {
+                      "value": {
+                        "value": "@item().META_ORCHESTRATION_ID",
+                        "type": "Expression"
+                      },
+                      "type": "Int32"
+                    }
+                  },
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00"
+                },
+                "datasetSettings": {
+                  "type": "FabricSqlDatabaseTable",
+                  "schema": [],
+                  "connectionSettings": {
+                    "name": "IngestXcel",
+                    "properties": {
+                      "type": "FabricSqlDatabase",
+                      "typeProperties": {
+                        "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                        "workspaceId": "00000000-0000-0000-0000-000000000000"
+                      },
+                      "externalReferences": {
+                        "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                      },
+                      "annotations": []
+                    }
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Get Last Watermark",
+              "dependsOn": [
+                {
+                  "activity": "Start Log",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "TridentNotebook",
+              "typeProperties": {
+                "notebookId": "24dc5704-2823-8550-4fb0-dae74f4efc86",
+                "workspaceId": "00000000-0000-0000-0000-000000000000",
+                "parameters": {
+                  "meta_orchestration_id": {
+                    "value": {
+                      "value": "@item().META_ORCHESTRATION_ID",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "source_workspace_id": {
+                    "value": {
+                      "value": "@item().SOURCE_WORKSPACE_ID",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "source_lakehouse_id": {
+                    "value": {
+                      "value": "@item().SOURCE_LAKEHOUSE_ID",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "source_schema_name": {
+                    "value": {
+                      "value": "@item().SOURCE_SCHEMA_NAME",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "source_entity": {
+                    "value": {
+                      "value": "@item().SOURCE_ENTITY_NAME",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "target_workspace_id": {
+                    "value": {
+                      "value": "@item().TARGET_WORKSPACE_ID",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "target_lakehouse_id": {
+                    "value": {
+                      "value": "@item().TARGET_LAKEHOUSE_ID",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "target_entity": {
+                    "value": {
+                      "value": "@item().TARGET_ENTITY",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "primary_keys": {
+                    "value": {
+                      "value": "@item().PRIMARY_KEYS",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "watermark_column": {
+                    "value": {
+                      "value": "@item().WATERMARK_COLUMN",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "watermark_value_used": {
+                    "value": {
+                      "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, '1900-01-01')",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "scd_type": {
+                    "value": {
+                      "value": "@item().SCD_TYPE",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "scd2_start_date_col": {
+                    "value": {
+                      "value": "@item().SCD2_START_DATE_COL",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "scd2_end_date_col": {
+                    "value": {
+                      "value": "@item().SCD2_END_DATE_COL",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "scd2_current_flag_col": {
+                    "value": {
+                      "value": "@item().SCD2_CURRENT_FLAG_COL",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  },
+                  "quarantine_table_name": {
+                    "value": {
+                      "value": "@item().QUARANTINE_TABLE_NAME",
+                      "type": "Expression"
+                    },
+                    "type": "string"
+                  }
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Load Silver",
+              "dependsOn": [
+                {
+                  "activity": "Get Last Watermark",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n        @FabricMonitorUrl = @FabricMonitorUrl",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "META_INGESTION_LOG_ID",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "Status",
+                        "type": "String",
+                        "value": "SUCCESS",
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "RowsRead",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@json(activity('Load Silver').output.result.exitValue).rows_read",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "RowsWritten",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@json(activity('Load Silver').output.result.exitValue).rows_written",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "WatermarkValueUsed",
+                        "type": "String",
+                        "value": {
+                          "value": "@json(activity('Load Silver').output.result.exitValue).watermark_value_used",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "WatermarkValueNew",
+                        "type": "String",
+                        "value": {
+                          "value": "@json(activity('Load Silver').output.result.exitValue).watermark_value_new",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "FabricMonitorUrl",
+                        "type": "String",
+                        "value": {
+                          "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "connectionSettings": {
+                "name": "IngestXcel",
+                "properties": {
+                  "type": "FabricSqlDatabase",
+                  "typeProperties": {
+                    "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "externalReferences": {
+                    "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Complete Log Success",
+              "dependsOn": [
+                {
+                  "activity": "Load Silver",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "EXEC [DBO].[spComplete_Ingestion_Log\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "META_INGESTION_LOG_ID",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "Status",
+                        "type": "String",
+                        "value": "FAILED",
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "ErrorMessage",
+                        "type": "String",
+                        "value": {
+                          "value": "@activity('Load Silver').error.message",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "FabricMonitorUrl",
+                        "type": "String",
+                        "value": {
+                          "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "connectionSettings": {
+                "name": "IngestXcel",
+                "properties": {
+                  "type": "FabricSqlDatabase",
+                  "typeProperties": {
+                    "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "externalReferences": {
+                    "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Complete Log Failure",
+              "dependsOn": [
+                {
+                  "activity": "Load Silver",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "ForEach Silver Entity",
+        "dependsOn": [
+          {
+            "activity": "Get Silver Batch",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "TriggerName": {
+        "type": "string"
+      },
+      "TargetEntityIds": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "PipelineStartTime": {
+        "type": "String",
+        "defaultValue": "@utcNow()"
+      }
+    }
+  }
+}

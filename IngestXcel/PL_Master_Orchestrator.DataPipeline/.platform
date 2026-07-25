@@ -2,10 +2,10 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
   "metadata": {
     "type": "DataPipeline",
-    "displayName": "PL_Bronze_Load"
+    "displayName": "PL_Master_Orchestrator"
   },
   "config": {
     "version": "2.0",
-    "logicalId": "7a162b9a-79a7-a8a9-4e2a-3436703bea40"
+    "logicalId": "2f259f06-f3d8-9b44-4909-8a414b7098aa"
   }
 }

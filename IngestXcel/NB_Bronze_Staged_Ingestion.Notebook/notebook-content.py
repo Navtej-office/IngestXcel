@@ -31,18 +31,7 @@
 # This cell defines all input parameters required by the notebook.
 # These parameters are typically supplied by the parent Fabric spGet_Bronze_Batch
 # pipeline using Notebook activity parameters.
-#
-#meta_orchestration_id = None
-#staging_path = "abfss://2773bec8-6438-4872-b2ee-d34f1a32b3a9@onelake.dfs.fabric.microsoft.com/7e491b48-5978-4a73-bbe7-b98df9812e65/Files/test_staging/person_address_test/"
-#target_workspace_id = "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
-#target_lakehouse_id = "7e491b48-5978-4a73-bbe7-b98df9812e65"
-#target_schema_name = "fabrictraining_ingestxcel"
-#target_entity = "person_address_test_incremental"
-#processing_method = "INCREMENTAL"
-#watermark_column = "ModifiedDate"
-#watermark_value_used = "1900-01-01"
- 
-#
+
 # ================================================================
 
 meta_orchestration_id = None

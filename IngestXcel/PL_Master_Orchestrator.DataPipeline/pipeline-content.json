@@ -1,0 +1,116 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "BronzeTriggerName",
+          "value": {
+            "value": "@concat('TRG_', pipeline().parameters.SystemIdentifier, '_BRONZE_LOAD_', pipeline().parameters.Frequency)",
+            "type": "Expression"
+          }
+        },
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Derive Bronze Trigger Name",
+        "dependsOn": []
+      },
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "SilverTriggerName",
+          "value": {
+            "value": "@concat('TRG_', pipeline().parameters.SystemIdentifier, '_SILVER_LOAD_', pipeline().parameters.Frequency)",
+            "type": "Expression"
+          }
+        },
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Derive Silver Trigger Name",
+        "dependsOn": []
+      },
+      {
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "7279297a-528a-82c0-4143-a40e5cd06332",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "TriggerName": {
+              "value": "@variables('BronzeTriggerName')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "policy": {
+          "secureInput": false
+        },
+        "name": "Run Bronze Ingestion",
+        "dependsOn": [
+          {
+            "activity": "Derive Bronze Trigger Name",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "Derive Silver Trigger Name",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "b2956913-4f84-bea5-4465-b937d94213db",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "TriggerName": {
+              "value": "@variables('SilverTriggerName')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "policy": {
+          "secureInput": false
+        },
+        "name": "Run Silver Ingestion",
+        "dependsOn": [
+          {
+            "activity": "Run Bronze Ingestion",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "SystemIdentifier": {
+        "type": "string"
+      },
+      "Frequency": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "BronzeTriggerName": {
+        "type": "String"
+      },
+      "SilverTriggerName": {
+        "type": "String"
+      }
+    }
+  }
+}
