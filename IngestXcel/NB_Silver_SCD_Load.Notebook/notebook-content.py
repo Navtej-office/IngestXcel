@@ -6,7 +6,18 @@
 # META   "kernel_info": {
 # META     "name": "synapse_pyspark"
 # META   },
-# META   "dependencies": {}
+# META   "dependencies": {
+# META     "lakehouse": {
+# META       "default_lakehouse": "0d793c52-9170-4eb5-b0b4-6bdf137c4403",
+# META       "default_lakehouse_name": "Silver_LH",
+# META       "default_lakehouse_workspace_id": "2773bec8-6438-4872-b2ee-d34f1a32b3a9",
+# META       "known_lakehouses": [
+# META         {
+# META           "id": "0d793c52-9170-4eb5-b0b4-6bdf137c4403"
+# META         }
+# META       ]
+# META     }
+# META   }
 # META }
 
 # CELL ********************
@@ -74,6 +85,11 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 from pyspark.sql.types import StringType
 from delta.tables import DeltaTable
+from datetime import datetime  # NEW — captures a fixed Python-level run timestamp,
+                                # avoiding the lazy-re-evaluation pitfall we hit with
+                                # rows_merged (F.current_timestamp() as a Spark column
+                                # expression can re-evaluate differently across actions;
+                                # a Python literal captured once cannot).
 
 # METADATA ********************
 
@@ -89,17 +105,26 @@ from delta.tables import DeltaTable
 # Filters to rows past Silver's own last-processed watermark - this is
 # Silver's own incremental progress against Bronze, separate from
 # Bronze's own watermark against the original external source.
- 
 try:
     primary_key_list = [k.strip() for k in primary_keys.split(",")]
- 
+
     bronze_path = (
         f"abfss://{source_workspace_id}@onelake.dfs.fabric.microsoft.com/"
         f"{source_lakehouse_id}/Tables/{source_schema_name}/{source_entity}"
     )
- 
+
     bronze_df = spark.read.format("delta").load(bronze_path)
-    new_data = bronze_df.filter(F.col(watermark_column) > F.lit(watermark_value_used))
+
+    if watermark_column:
+        new_data = bronze_df.filter(F.col(watermark_column) > F.lit(watermark_value_used))
+    else:
+        # No watermark-capable column exists on this entity (e.g. PersonDetails) -
+        # full rescan every run. Cell 6's hash comparison against Silver's own
+        # current active rows still correctly finds real changes on its own;
+        # it was never watermark-dependent to begin with. Only the efficiency
+        # of how much gets re-read each run is affected, not correctness.
+        new_data = bronze_df
+
     rows_read = new_data.count()
 except Exception as e:
     raise Exception(f"[Read Bronze Source] Failed to read '{bronze_path}': {e}") from e
@@ -123,8 +148,16 @@ try:
         null_pk_condition = " OR ".join([f"{k} IS NULL" for k in primary_key_list])
         quarantined_null_pk = new_data.filter(null_pk_condition)
         new_data_valid = new_data.filter(f"NOT ({null_pk_condition})")
- 
-        dedup_window = Window.partitionBy(*primary_key_list).orderBy(F.col(watermark_column).desc())
+
+        if watermark_column:
+            dedup_order = F.col(watermark_column).desc()
+        else:
+            # No real timestamp to break ties on. This picks one deterministically
+            # but arbitrarily if the same key genuinely repeats within one Bronze
+            # snapshot - not a true "latest", since no such signal exists here.
+            dedup_order = F.monotonically_increasing_id().desc()
+
+        dedup_window = Window.partitionBy(*primary_key_list).orderBy(dedup_order)
         deduped_data = (
             new_data_valid
             .withColumn("_dedup_rank", F.row_number().over(dedup_window))
@@ -233,71 +266,68 @@ try:
  
     elif scd_type == "SCD2":
         if not table_exists:
-            # Bootstrap: everything is a brand-new current version
             initial_load = (
                 deduped_data
-                .withColumn(scd2_start_date_col, F.col(watermark_column))
+                .withColumn(scd2_start_date_col, F.col(watermark_column) if watermark_column else F.lit(datetime.now()))
                 .withColumn(scd2_end_date_col, F.lit(None).cast(StringType()))
                 .withColumn(scd2_current_flag_col, F.lit("Y"))
             )
             initial_load.write.format("delta").mode("overwrite").option("mergeSchema", "true").save(target_path)
             rows_merged = initial_load.count()
         else:
+            # Fixed run-timestamp, captured once - used everywhere below in place of
+            # watermark_column when no real source timestamp exists.
+            version_ts = F.col(watermark_column) if watermark_column else F.lit(datetime.now())
+
             existing_active = (
                 spark.read.format("delta").load(target_path)
                 .filter(F.col(scd2_current_flag_col) == "Y")
             )
 
-
-            hash_exclude_cols = set(primary_key_list) | {watermark_column, scd2_start_date_col, scd2_end_date_col, scd2_current_flag_col}
+            hash_exclude_cols = set(primary_key_list) | {watermark_column, scd2_start_date_col, scd2_end_date_col, scd2_current_flag_col} - {None}
             new_hash_cols = sorted([c for c in deduped_data.columns if c not in hash_exclude_cols])
             existing_hash_cols = sorted([c for c in existing_active.columns if c not in hash_exclude_cols])
- 
-            new_hashed = deduped_data.select(*primary_key_list, watermark_column, F.hash(*new_hash_cols).alias("new_hash"))
+
+            new_hashed = deduped_data.select(*primary_key_list, F.hash(*new_hash_cols).alias("new_hash"))
             existing_hashed = existing_active.select(*primary_key_list, F.hash(*existing_hash_cols).alias("existing_hash"))
- 
+
             compared = new_hashed.join(existing_hashed, primary_key_list, "left_outer")
             changed_keys = compared.filter(
                 (F.col("existing_hash").isNotNull()) & (F.col("new_hash") != F.col("existing_hash"))
             ).select(*primary_key_list).distinct()
 
-
             new_keys = compared.filter(F.col("existing_hash").isNull()).select(*primary_key_list).distinct()
-
 
             changed_new_rows = deduped_data.join(changed_keys, primary_key_list, "inner")
             brand_new_rows = deduped_data.join(new_keys, primary_key_list, "inner")
 
-            # Close out the old version of changed rows - join in the new
-            # row's watermark value per-key to use as this row's end date.
             close_out_rows = (
                 existing_active.join(changed_keys, primary_key_list, "inner").alias("e")
-                .join(changed_new_rows.select(*primary_key_list, F.col(watermark_column).alias("_new_ts")).alias("n"), primary_key_list, "inner")
+                .join(changed_new_rows.select(*primary_key_list, version_ts.alias("_new_ts")).alias("n"), primary_key_list, "inner")
                 .select("e.*", "_new_ts")
                 .withColumn(scd2_end_date_col, F.col("_new_ts"))
                 .withColumn(scd2_current_flag_col, F.lit("N"))
                 .drop("_new_ts")
             )
-            #debugging
-         
+
             new_version_rows = (
                 changed_new_rows
-                .withColumn(scd2_start_date_col, F.col(watermark_column))
+                .withColumn(scd2_start_date_col, version_ts)
                 .withColumn(scd2_end_date_col, F.lit(None).cast(StringType()))
                 .withColumn(scd2_current_flag_col, F.lit("Y"))
             )
-          
+
             brand_new_final = (
                 brand_new_rows
-                .withColumn(scd2_start_date_col, F.col(watermark_column))
+                .withColumn(scd2_start_date_col, version_ts)
                 .withColumn(scd2_end_date_col, F.lit(None).cast(StringType()))
                 .withColumn(scd2_current_flag_col, F.lit("Y"))
             )
-           
 
             all_changes = close_out_rows.unionByName(new_version_rows, allowMissingColumns=True).unionByName(brand_new_final, allowMissingColumns=True)
-                     
-            
+            all_changes = all_changes.cache()
+            rows_merged = all_changes.count()
+
             merge_condition = pk_join_condition + f" AND current.{scd2_current_flag_col} = 'Y' AND new.{scd2_current_flag_col} = 'N'"
             target_table = DeltaTable.forPath(spark, target_path)
             (
@@ -307,7 +337,7 @@ try:
                 .whenNotMatchedInsertAll()
                 .execute()
             )
-            rows_merged = all_changes.count()
+            all_changes.unpersist()
     else:
         raise Exception(f"Unrecognized SCD_TYPE '{scd_type}' - expected 'SCD1' or 'SCD2'")
  
@@ -368,12 +398,12 @@ result = {
     "watermark_value_used": watermark_value_used,
     "watermark_value_new": (
         str(deduped_data.agg(F.max(F.col(watermark_column))).collect()[0][0])
-        if rows_read > 0 else watermark_value_used
+        if (rows_read > 0 and watermark_column) else watermark_value_used
     ),
     "reconciliation_status": reconciliation_status,
     "reconciliation_note": reconciliation_note,
 }
- 
+
 mssparkutils.notebook.exit(json.dumps(result))
 
 # METADATA ********************

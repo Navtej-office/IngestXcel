@@ -176,22 +176,39 @@ except Exception as e:
 
 # CELL ********************
 
+# ================================================================
+# CELL 5 - WRITE TO BRONZE DELTA
+# ================================================================
 try:
     target_path = (
         f"abfss://{target_workspace_id}@onelake.dfs.fabric.microsoft.com/"
         f"{target_lakehouse_id}/Tables/{target_schema_name}/{target_entity}"
     )
 
-    if rows_read > 0:
+    if processing_method == "FULL":
+        # FULL mirrors current source state on every run, including the
+        # empty-source edge case - always overwrite, never append, or
+        # repeated runs duplicate the whole table (same bug just fixed
+        # on the PIPELINE side's Table Action).
         (
             df.write
             .format("delta")
-            .mode("append")
+            .mode("overwrite")
             .option("mergeSchema", "true")
             .save(target_path)
         )
-
-    rows_written = rows_read
+        rows_written = rows_read
+    else:
+        # INCREMENTAL: only rows past the watermark, always additive.
+        if rows_read > 0:
+            (
+                df.write
+                .format("delta")
+                .mode("append")
+                .option("mergeSchema", "true")
+                .save(target_path)
+            )
+        rows_written = rows_read
 except Exception as e:
     raise Exception(f"[Write Bronze Delta] Failed to write to '{target_path}': {e}") from e
 

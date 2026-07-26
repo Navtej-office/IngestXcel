@@ -245,9 +245,14 @@
                           },
                           "sink": {
                             "type": "LakehouseTableSink",
-                            "tableActionOption": "Append",
+                            "tableActionOption": "Upsert",
                             "applyVOrder": false,
-                            "partitionOption": "None",
+                            "upsertSettings": {
+                              "keys": {
+                                "value": "@split(item().PRIMARY_KEYS, ',')",
+                                "type": "Expression"
+                              }
+                            },
                             "datasetSettings": {
                               "type": "LakehouseTable",
                               "typeProperties": {

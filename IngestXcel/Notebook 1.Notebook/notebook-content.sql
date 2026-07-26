@@ -354,3 +354,205 @@ spark.sql("SHOW TABLES IN fabrictraining_ingestxcel").show(truncate=False)
 -- META   "language": "python",
 -- META   "language_group": "synapse_pyspark"
 -- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE SCHEMA IF NOT EXISTS fabrictraining_ingestxcel
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.product (
+-- MAGIC     ProductID INT,
+-- MAGIC     Name STRING,
+-- MAGIC     ProductNumber STRING,
+-- MAGIC     MakeFlag STRING,
+-- MAGIC     FinishedGoodsFlag STRING,
+-- MAGIC     Color STRING,
+-- MAGIC     SafetyStockLevel SMALLINT,
+-- MAGIC     ReorderPoint SMALLINT,
+-- MAGIC     StandardCost DECIMAL(19,4),
+-- MAGIC     ListPrice DECIMAL(19,4),
+-- MAGIC     Size STRING,
+-- MAGIC     SizeUnitMeasureCode STRING,
+-- MAGIC     WeightUnitMeasureCode STRING,
+-- MAGIC     Weight DECIMAL(8,2),
+-- MAGIC     DaysToManufacture INT,
+-- MAGIC     ProductLine STRING,
+-- MAGIC     Class STRING,
+-- MAGIC     Style STRING,
+-- MAGIC     ProductSubcategoryID INT,
+-- MAGIC     ProductModelID INT,
+-- MAGIC     SellStartDate TIMESTAMP,
+-- MAGIC     SellEndDate TIMESTAMP,
+-- MAGIC     DiscontinuedDate TIMESTAMP,
+-- MAGIC     rowguid STRING,
+-- MAGIC     ModifiedDate TIMESTAMP
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.productcategory (
+-- MAGIC     ProductCategoryID INT,
+-- MAGIC     Name STRING,
+-- MAGIC     rowguid STRING,
+-- MAGIC     ModifiedDate TIMESTAMP
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- MARKDOWN ********************
+
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC spark.sql("""
+-- MAGIC CREATE SCHEMA IF NOT EXISTS fabrictraining_ingestxcel
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.product (
+-- MAGIC     ProductID INT,
+-- MAGIC     Name STRING,
+-- MAGIC     ProductNumber STRING,
+-- MAGIC     MakeFlag STRING,
+-- MAGIC     FinishedGoodsFlag STRING,
+-- MAGIC     Color STRING,
+-- MAGIC     SafetyStockLevel SMALLINT,
+-- MAGIC     ReorderPoint SMALLINT,
+-- MAGIC     StandardCost DECIMAL(19,4),
+-- MAGIC     ListPrice DECIMAL(19,4),
+-- MAGIC     Size STRING,
+-- MAGIC     SizeUnitMeasureCode STRING,
+-- MAGIC     WeightUnitMeasureCode STRING,
+-- MAGIC     Weight DECIMAL(8,2),
+-- MAGIC     DaysToManufacture INT,
+-- MAGIC     ProductLine STRING,
+-- MAGIC     Class STRING,
+-- MAGIC     Style STRING,
+-- MAGIC     ProductSubcategoryID INT,
+-- MAGIC     ProductModelID INT,
+-- MAGIC     SellStartDate TIMESTAMP,
+-- MAGIC     SellEndDate TIMESTAMP,
+-- MAGIC     DiscontinuedDate TIMESTAMP,
+-- MAGIC     rowguid STRING,
+-- MAGIC     ModifiedDate TIMESTAMP,
+-- MAGIC     SCD_END_DATE TIMESTAMP,
+-- MAGIC     IS_CURRENT STRING
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.productcategory (
+-- MAGIC     ProductCategoryID INT,
+-- MAGIC     Name STRING,
+-- MAGIC     rowguid STRING,
+-- MAGIC     ModifiedDate TIMESTAMP
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC # -----------------------------------------------------------------------
+-- MAGIC # QUARANTINE tables (Silver_LH) — same shape as their Silver counterparts,
+-- MAGIC # no SCD columns needed (a quarantined row was rejected before merge).
+-- MAGIC # -----------------------------------------------------------------------
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.product_quarantine (
+-- MAGIC     ProductID INT, Name STRING, ProductNumber STRING, MakeFlag STRING,
+-- MAGIC     FinishedGoodsFlag STRING, Color STRING, SafetyStockLevel SMALLINT,
+-- MAGIC     ReorderPoint SMALLINT, StandardCost DECIMAL(19,4), ListPrice DECIMAL(19,4),
+-- MAGIC     Size STRING, SizeUnitMeasureCode STRING, WeightUnitMeasureCode STRING,
+-- MAGIC     Weight DECIMAL(8,2), DaysToManufacture INT, ProductLine STRING,
+-- MAGIC     Class STRING, Style STRING, ProductSubcategoryID INT, ProductModelID INT,
+-- MAGIC     SellStartDate TIMESTAMP, SellEndDate TIMESTAMP, DiscontinuedDate TIMESTAMP,
+-- MAGIC     rowguid STRING, ModifiedDate TIMESTAMP
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+-- MAGIC 
+-- MAGIC spark.sql("""
+-- MAGIC CREATE TABLE IF NOT EXISTS fabrictraining_ingestxcel.productcategory_quarantine (
+-- MAGIC     ProductCategoryID INT, Name STRING, rowguid STRING, ModifiedDate TIMESTAMP
+-- MAGIC ) USING DELTA
+-- MAGIC """)
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+-- MAGIC %%pyspark
+-- MAGIC spark.sql("""delete from fabrictraining_ingestxcel.product""")
+-- MAGIC spark.sql("""delete from fabrictraining_ingestxcel.productcategory""")
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "python",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+--Bronze table creation
+CREATE TABLE fabrictraining_ingestxcel.persondetails (
+    ID INT,
+    Name STRING,
+    Age INT,
+    DateOfBirth DATE,
+    Address STRING
+) USING DELTA;
+
+CREATE TABLE fabrictraining_ingestxcel.currency (
+    CurrencyCode STRING,
+    Name STRING,
+    ModifiedDate TIMESTAMP
+) USING DELTA;
+
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "sparksql",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+ 
+CREATE TABLE fabrictraining_ingestxcel.persondetails (
+    ID INT,
+    Name STRING,
+    Age INT,
+    DateOfBirth DATE,
+    Address STRING,
+    SCD_START_DATE TIMESTAMP,
+    SCD_END_DATE TIMESTAMP,
+    IS_CURRENT STRING
+) USING DELTA;
+
+CREATE TABLE fabrictraining_ingestxcel.currency (
+    CurrencyCode STRING,
+    Name STRING,
+    ModifiedDate TIMESTAMP
+) USING DELTA;
+ 
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "sparksql",
+-- META   "language_group": "synapse_pyspark"
+-- META }
