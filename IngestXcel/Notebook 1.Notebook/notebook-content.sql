@@ -8,12 +8,12 @@
 -- META   },
 -- META   "dependencies": {
 -- META     "lakehouse": {
--- META       "default_lakehouse": "7e491b48-5978-4a73-bbe7-b98df9812e65",
--- META       "default_lakehouse_name": "Bronze_LH",
+-- META       "default_lakehouse": "0d793c52-9170-4eb5-b0b4-6bdf137c4403",
+-- META       "default_lakehouse_name": "Silver_LH",
 -- META       "default_lakehouse_workspace_id": "2773bec8-6438-4872-b2ee-d34f1a32b3a9",
 -- META       "known_lakehouses": [
 -- META         {
--- META           "id": "7e491b48-5978-4a73-bbe7-b98df9812e65"
+-- META           "id": "0d793c52-9170-4eb5-b0b4-6bdf137c4403"
 -- META         }
 -- META       ]
 -- META     }
@@ -549,6 +549,23 @@ CREATE TABLE fabrictraining_ingestxcel.currency (
     ModifiedDate TIMESTAMP
 ) USING DELTA;
  
+
+-- METADATA ********************
+
+-- META {
+-- META   "language": "sparksql",
+-- META   "language_group": "synapse_pyspark"
+-- META }
+
+-- CELL ********************
+
+CREATE TABLE fabrictraining_ingestxcel.persondetails_quarantine (
+    ID INT,
+    Name STRING,
+    Age INT,
+    DateOfBirth DATE,
+    Address STRING
+) USING DELTA;
 
 -- METADATA ********************
 
