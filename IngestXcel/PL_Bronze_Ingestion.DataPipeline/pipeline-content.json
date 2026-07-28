@@ -905,7 +905,7 @@
                               "enableVertiParquet": true
                             },
                             "storeSettings": {
-                              "type": "LakehouseWriteSettings"
+                              "type": "AzureBlobStorageWriteSettings"
                             },
                             "datasetSettings": {
                               "type": "Parquet",
@@ -1753,6 +1753,307 @@
                         "dependsOn": [
                           {
                             "activity": "Stage AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": "NOTEBOOK_LAKEHOUSE_FILE",
+                    "activities": [
+                      {
+                        "type": "TridentNotebook",
+                        "typeProperties": {
+                          "notebookId": "2dd66d65-5ee5-ab90-45a1-966e043bc59e",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "parameters": {
+                            "meta_orchestration_id": {
+                              "value": {
+                                "value": "@item().META_ORCHESTRATION_ID",
+                                "type": "Expression"
+                              },
+                              "type": "int"
+                            },
+                            "target_workspace_id": {
+                              "value": {
+                                "value": "@item().TARGET_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_lakehouse_id": {
+                              "value": {
+                                "value": "@item().TARGET_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_schema_name": {
+                              "value": {
+                                "value": "@item().TARGET_SCHEMA_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_entity": {
+                              "value": {
+                                "value": "@item().TARGET_ENTITY",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "processing_method": {
+                              "value": {
+                                "value": "@item().PROCESSING_METHOD",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_value_used": {
+                              "value": {
+                                "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, '1900-01-01')",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "source_workspace_id": {
+                              "value": {
+                                "value": "@item().SOURCE_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "source_lakehouse_id": {
+                              "value": {
+                                "value": "@item().SOURCE_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "wildcard_folder_path": {
+                              "value": {
+                                "value": "@item().WILDCARD_FOLDER_PATH",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "file_format": {
+                              "value": {
+                                "value": "@item().FILE_FORMAT",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "sheet_name": {
+                              "value": {
+                                "value": "@item().SHEET_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "file_has_header_row": {
+                              "value": {
+                                "value": "@item().FILE_HAS_HEADER_ROW",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Load Lakehouse File to Bronze",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n      @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).rows_read",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).rows_written",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).watermark_value_used",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).watermark_value_new",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_Notebook_copy1",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Lakehouse File to Bronze",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Load Lakehouse File to Bronze').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Load_copy1",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Lakehouse File to Bronze",
                             "dependencyConditions": [
                               "Failed"
                             ]
