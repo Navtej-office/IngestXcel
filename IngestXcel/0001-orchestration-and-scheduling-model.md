@@ -65,6 +65,10 @@ step, for no real reason) and rejected before any code was built against it.
   Bronze's and Silver's notebooks structurally can never satisfy by design). Accepted as a
   capacity-tier constraint, not a design defect — expected to resolve on Premium/paid capacity.
 
+  - Confirmed since, not just expected: the capacity-tier constraint above is resolved in practice — subscribing an F8 pay-as-you-go capacity (~$0.18/CU-hour, pausable) and assigning it to both workspaces eliminated the single-concurrent-Spark-session limit; the full Bronze→Silver chain has since run successfully back-to-back multiple times.
+  
+  - Known deviation from this ADR's own Decision, not yet resolved: the LAKEHOUSE_FILE tech type's Bronze entities (Excel, CSV) currently share FabricSQLDB's existing trigger, because the SRC_INGESTXCEL_LAKEHOUSE_FILE connection endpoint reused that source's BRONZE_SCHEMA_ALIAS value rather than getting its own — directly contradicting "a single trigger... never spans multiple source systems" above. The intended fix is a dedicated trigger for LAKEHOUSE_FILE as a whole (covering every file format, since they deliberately share one connection endpoint). Not yet done: BRONZE_SCHEMA_ALIAS currently drives both the trigger's SYSTEM_IDENTIFIER and the physical Lakehouse schema name tables land under, so giving LAKEHOUSE_FILE its own trigger identity would, under the current property design, also rename its physical schema — a decision tracked here, not yet made.
+
 ## Revision History
 
 - Draft 1: single global master pipeline (all-systems'-Bronze, then all-systems'-Silver).
