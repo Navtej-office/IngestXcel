@@ -78,18 +78,16 @@ evolves. Do not silently change or "improve" them; if a change seems warranted, 
    to files, or printed in cell output.
 5. **Gateway routing** (on-prem/VNet) is a property of the Fabric Connection object itself, not
    something the framework's code should encode or branch on directly.
-6. **Idempotency**: every ingestion run must be safely re-runnable without duplicating or
-   corrupting data. Bronze full loads append a new tagged batch, never truncate. Bronze
-   incremental loads use a watermark-based append strategy. Silver/Gold incremental loads use an
-   appropriate idempotent strategy (partition overwrite or merge/upsert on business key) per
-   entity's metadata.
+6. **Idempotency**: every ingestion run must be safely re-runnable without duplicating or   
+    corrupting data. Bronze full loads overwrite/replace the target in place each run — no batch-tagging, no retained history for FULL entities (proven via Table Action Upsert for PIPELINE, mode("overwrite") for NOTEBOOK). Bronze incremental loads use a watermark-based append strategy (a metadata column for SQL sources, file modification time for file sources — see ADR-0008). Silver/Gold incremental loads use an appropriate idempotent strategy (SCD1 upsert, SCD2 merge, or a no-watermark full-rescan variant — see ADR-0007/ADR-0009) per entity's metadata.
 7. **Logging is mandatory** for every run, including failures — both pipeline- and
    activity-level.
 8. **Inactive metadata**: metadata tables may have inactive records; always filter to active
    only when reading.
 9. **Metadata naming convention**: metadata tables and columns are always upper case.
 10. **Structured data** is ingested to Tables in the Lakehouse.
-11. **File naming** (where files are used): `SourceName/yyyymmdd/sourcetablename_yyyymmdd_HH_MM_SS`.
+11. **File naming** File naming (where files are used): no enforced naming convention — a 
+    file-based entity's WILDCARD_FOLDER_PATH metadata value matches whatever filename a contributor actually uploads (exact name or a wildcard pattern), and incremental loading is driven by the file's own modification time, not a timestamp embedded in the filename. See ADR-0008.
 12. **SCD**: SCD1 or SCD2, implemented in the Silver layer, configurable and driven from
     metadata (see ADR-0007).
 13. Bronze supports dynamic metadata-driven connectivity, configurable Full/Incremental load,
