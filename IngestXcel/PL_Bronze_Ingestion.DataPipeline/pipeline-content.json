@@ -1,0 +1,2134 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "FabricSqlDatabaseSource",
+            "sqlReaderStoredProcedureName": "spGet_Bronze_Batch",
+            "storedProcedureParameters": {
+              "TriggerName ": {
+                "value": {
+                  "value": "@pipeline().parameters.TriggerName",
+                  "type": "Expression"
+                },
+                "type": "String"
+              },
+              "TargetEntityIds": {
+                "value": {
+                  "value": "@pipeline().parameters.TargetEntityIds",
+                  "type": "Expression"
+                },
+                "type": "String"
+              }
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "FabricSqlDatabaseTable",
+            "schema": [],
+            "connectionSettings": {
+              "name": "IngestXcel",
+              "properties": {
+                "type": "FabricSqlDatabase",
+                "typeProperties": {
+                  "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "externalReferences": {
+                  "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Get Bronze Batch",
+        "dependsOn": [
+          {
+            "activity": "Set Pipeline Start Time",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "batchCount": 10,
+          "items": {
+            "value": "@activity('Get Bronze Batch').output.value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "EXEC [DBO].[spStart_Ingestion_Log]\n      @META_ORCHESTRATION_ID = @META_ORCHESTRATION_ID,\n      @TriggerExecutionId = @TriggerExecutionId,\n      @TriggerExecutionStartTime = @TriggerExecutionStartTime,\n      @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID OUTPUT",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "META_ORCHESTRATION_ID",
+                        "type": "Int32",
+                        "value": {
+                          "value": "@item().META_ORCHESTRATION_ID",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "TriggerExecutionId",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().RunId",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "TriggerExecutionStartTime",
+                        "type": "String",
+                        "value": {
+                          "value": "@variables('PipelineStartTime')",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "META_INGESTION_LOG_ID",
+                        "type": "Int64",
+                        "value": "0",
+                        "direction": "Output"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "connectionSettings": {
+                "name": "IngestXcel",
+                "properties": {
+                  "type": "FabricSqlDatabase",
+                  "typeProperties": {
+                    "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "externalReferences": {
+                    "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Start Log",
+              "dependsOn": []
+            },
+            {
+              "type": "Lookup",
+              "typeProperties": {
+                "source": {
+                  "type": "FabricSqlDatabaseSource",
+                  "sqlReaderStoredProcedureName": "spGet_Last_Watermark",
+                  "storedProcedureParameters": {
+                    "META_ORCHESTRATION_ID": {
+                      "value": {
+                        "value": "@item().META_ORCHESTRATION_ID",
+                        "type": "Expression"
+                      },
+                      "type": "Int32"
+                    }
+                  },
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00"
+                },
+                "datasetSettings": {
+                  "type": "FabricSqlDatabaseTable",
+                  "schema": [],
+                  "connectionSettings": {
+                    "name": "IngestXcel",
+                    "properties": {
+                      "type": "FabricSqlDatabase",
+                      "typeProperties": {
+                        "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                        "workspaceId": "00000000-0000-0000-0000-000000000000"
+                      },
+                      "externalReferences": {
+                        "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                      },
+                      "annotations": []
+                    }
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Get Last Watermark",
+              "dependsOn": [
+                {
+                  "activity": "Start Log",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Switch",
+              "typeProperties": {
+                "on": {
+                  "value": "@concat(item().EXECUTION_METHOD, '_', item().SOURCE_TECH_TYPE)",
+                  "type": "Expression"
+                },
+                "cases": [
+                  {
+                    "value": "PIPELINE_FABRIC_SQLDB",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "FabricSqlDatabaseSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\r\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\r\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\r\n  )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "FabricSqlDatabaseTable",
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "0dadf841_5113_4e24_a752_59a3bb2b5429",
+                                "properties": {
+                                  "type": "FabricSqlDatabase",
+                                  "typeProperties": {
+                                    "artifactId": "@item().SOURCE_SQLDATABASE_ID",
+                                    "workspaceId": "@item().SOURCE_WORKSPACE_ID"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "@item().SOURCE_CONNECTION_ID"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Upsert",
+                            "applyVOrder": false,
+                            "upsertSettings": {
+                              "keys": {
+                                "value": "@split(item().PRIMARY_KEYS, ',')",
+                                "type": "Expression"
+                              }
+                            },
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "schema": {
+                                  "value": "@item().TARGET_SCHEMA_NAME",
+                                  "type": "Expression"
+                                },
+                                "table": {
+                                  "value": "@item().TARGET_ENTITY",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "d9175f61_0e48_497d_98f2_b2505496a161",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy Fabric SQLDB Source",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "Lookup",
+                        "typeProperties": {
+                          "source": {
+                            "type": "FabricSqlDatabaseSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n  equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n  concat('SELECT MAX(', item().WATERMARK_COLUMN, ') AS NewWatermark FROM ', item().SOURCE_ENTITY_NAME),\n  'SELECT CAST(NULL AS VARCHAR(50)) AS NewWatermark'\n)",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00"
+                          },
+                          "datasetSettings": {
+                            "type": "FabricSqlDatabaseTable",
+                            "schema": [],
+                            "connectionSettings": {
+                              "name": "7f77764c_5c40_49b3_a381_e42bea8da1cd",
+                              "properties": {
+                                "type": "FabricSqlDatabase",
+                                "typeProperties": {
+                                  "artifactId": "@item().SOURCE_SQLDATABASE_ID",
+                                  "workspaceId": "@item().SOURCE_WORKSPACE_ID"
+                                },
+                                "externalReferences": {
+                                  "connection": "@item().SOURCE_CONNECTION_ID"
+                                },
+                                "annotations": []
+                              }
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Get New Watermark",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n        @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, null)",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Get New Watermark').output.firstRow.NewWatermark",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success",
+                        "dependsOn": [
+                          {
+                            "activity": "Get New Watermark",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Copy Fabric SQLDB Source').Error.Message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": "PIPELINE_AZURE_SQL",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\n  )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "AzureSqlTable",
+                              "typeProperties": {
+                                "database": {
+                                  "value": "@item().SOURCE_DATABASE_NAME",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "externalReferences": {
+                                "connection": "@item().SOURCE_CONNECTION_ID"
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "ParquetSink",
+                            "formatSettings": {
+                              "type": "ParquetWriteSettings",
+                              "enableVertiParquet": true
+                            },
+                            "storeSettings": {
+                              "type": "LakehouseWriteSettings"
+                            },
+                            "datasetSettings": {
+                              "type": "Parquet",
+                              "typeProperties": {
+                                "location": {
+                                  "type": "LakehouseLocation",
+                                  "folderPath": {
+                                    "value": "@concat('bronze_staging/', item().TARGET_SCHEMA_NAME, '/', item().TARGET_ENTITY, '/', variables('PipelineStartTime'))",
+                                    "type": "Expression"
+                                  }
+                                },
+                                "compressionCodec": "snappy"
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "677e4f80_2d20_46c7_a577_777b3a083101",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Files"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy AzureSQLDB Source",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n      @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').output.rowsRead",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, null)",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Get New Watermark__AzureSQLDB').output.firstRow.NewWatermark",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_copy_AzureSQL",
+                        "dependsOn": [
+                          {
+                            "activity": "Get New Watermark__AzureSQLDB",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Copy AzureSQLDB Source').Error.Message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_copy_azure SQLDB",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Lookup",
+                        "typeProperties": {
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n     equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n     concat('SELECT MAX(', item().WATERMARK_COLUMN, ') AS NewWatermark FROM ', item().SOURCE_ENTITY_NAME),\n     'SELECT CAST(NULL AS VARCHAR(50)) AS NewWatermark'\n   )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00"
+                          },
+                          "datasetSettings": {
+                            "type": "AzureSqlTable",
+                            "typeProperties": {
+                              "database": {
+                                "value": "@item().SOURCE_DATABASE_NAME",
+                                "type": "Expression"
+                              }
+                            },
+                            "schema": [],
+                            "externalReferences": {
+                              "connection": "@item().SOURCE_CONNECTION_ID"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Get New Watermark__AzureSQLDB",
+                        "dependsOn": [
+                          {
+                            "activity": "Copy AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": "NOTEBOOK_FABRIC_SQLDB",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "FabricSqlDatabaseSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n    not(equals(item().SOURCE_QUERY_OVERRIDE, null)),\n    if(\n        equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n        concat(item().SOURCE_QUERY_OVERRIDE, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\n        item().SOURCE_QUERY_OVERRIDE\n    ),\n    if(\n        equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n        concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\n        concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\n    )\n)",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "FabricSqlDatabaseTable",
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "0dadf841_5113_4e24_a752_59a3bb2b5429",
+                                "properties": {
+                                  "type": "FabricSqlDatabase",
+                                  "typeProperties": {
+                                    "artifactId": "@item().SOURCE_SQLDATABASE_ID",
+                                    "workspaceId": "@item().SOURCE_WORKSPACE_ID"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "@item().SOURCE_CONNECTION_ID"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "ParquetSink",
+                            "formatSettings": {
+                              "type": "ParquetWriteSettings",
+                              "enableVertiParquet": true
+                            },
+                            "storeSettings": {
+                              "type": "AzureBlobStorageWriteSettings"
+                            },
+                            "datasetSettings": {
+                              "type": "Parquet",
+                              "typeProperties": {
+                                "location": {
+                                  "type": "LakehouseLocation",
+                                  "folderPath": {
+                                    "value": "@concat('bronze_staging/', item().TARGET_SCHEMA_NAME, '/', item().TARGET_ENTITY, '/', variables('PipelineStartTime'))",
+                                    "type": "Expression"
+                                  }
+                                },
+                                "compressionCodec": "snappy"
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "d9175f61_0e48_497d_98f2_b2505496a161",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Files"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Stage Fabric SQLDB Source",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "TridentNotebook",
+                        "typeProperties": {
+                          "notebookId": "947b2481-2a75-a1a8-4540-bab4a6f1fcdb",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "parameters": {
+                            "meta_orchestration_id": {
+                              "value": {
+                                "value": "@item().META_ORCHESTRATION_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "staging_path": {
+                              "value": {
+                                "value": "@concat('abfss://', item().TARGET_WORKSPACE_ID, '@onelake.dfs.fabric.microsoft.com/', item().TARGET_LAKEHOUSE_ID, '/Files/bronze_staging/', item().TARGET_SCHEMA_NAME, '/', item().TARGET_ENTITY, '/', variables('PipelineStartTime'))",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_workspace_id": {
+                              "value": {
+                                "value": "@item().TARGET_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_lakehouse_id": {
+                              "value": {
+                                "value": "@item().TARGET_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_schema_name": {
+                              "value": {
+                                "value": "@item().TARGET_SCHEMA_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_entity": {
+                              "value": {
+                                "value": "@item().TARGET_ENTITY",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "processing_method": {
+                              "value": {
+                                "value": "@item().PROCESSING_METHOD",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_column": {
+                              "value": {
+                                "value": "@item().WATERMARK_COLUMN",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_value_used": {
+                              "value": {
+                                "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, '1900-01-01')",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Load Staged Parquet to Bronze",
+                        "dependsOn": [
+                          {
+                            "activity": "Stage Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n      @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze').output.result.exitValue).rows_read",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze').output.result.exitValue).rows_written",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze').output.result.exitValue).watermark_value_used",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze').output.result.exitValue).watermark_value_new",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_Notebook",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Staged Parquet to Bronze",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Load Staged Parquet to Bronze').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Load",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Staged Parquet to Bronze",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Stage Fabric SQLDB Source').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Stage",
+                        "dependsOn": [
+                          {
+                            "activity": "Stage Fabric SQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": "NOTEBOOK_AZURE_SQL",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "@if(\n    equals(item().PROCESSING_METHOD, 'INCREMENTAL'),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME, ' WHERE ', item().WATERMARK_COLUMN, ' > ''', activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, ''''),\n    concat('SELECT * FROM ', item().SOURCE_ENTITY_NAME)\n  )",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "AzureSqlTable",
+                              "typeProperties": {
+                                "database": {
+                                  "value": "@item().SOURCE_DATABASE_NAME",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "externalReferences": {
+                                "connection": "@item().SOURCE_CONNECTION_ID"
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "ParquetSink",
+                            "formatSettings": {
+                              "type": "ParquetWriteSettings",
+                              "enableVertiParquet": true
+                            },
+                            "storeSettings": {
+                              "type": "LakehouseWriteSettings"
+                            },
+                            "datasetSettings": {
+                              "type": "Parquet",
+                              "typeProperties": {
+                                "location": {
+                                  "type": "LakehouseLocation",
+                                  "folderPath": {
+                                    "value": "@concat('bronze_staging/', item().TARGET_SCHEMA_NAME, '/', item().TARGET_ENTITY, '/', variables('PipelineStartTime'))",
+                                    "type": "Expression"
+                                  }
+                                },
+                                "compressionCodec": "snappy"
+                              },
+                              "schema": [],
+                              "connectionSettings": {
+                                "name": "677e4f80_2d20_46c7_a577_777b3a083101",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "@item().TARGET_LAKEHOUSE_ID",
+                                    "workspaceId": "@item().TARGET_WORKSPACE_ID",
+                                    "rootFolder": "Files"
+                                  },
+                                  "externalReferences": {
+                                    "connection": "9e4d6035-ac17-4eb8-8421-5e38a92a1dfc"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 3,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Stage AzureSQLDB Source",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "TridentNotebook",
+                        "typeProperties": {
+                          "notebookId": "947b2481-2a75-a1a8-4540-bab4a6f1fcdb",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "parameters": {
+                            "meta_orchestration_id": {
+                              "value": {
+                                "value": "@item().META_ORCHESTRATION_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "staging_path": {
+                              "value": {
+                                "value": "@concat('abfss://', item().TARGET_WORKSPACE_ID, '@onelake.dfs.fabric.microsoft.com/', item().TARGET_LAKEHOUSE_ID, '/Files/bronze_staging/', item().TARGET_SCHEMA_NAME, '/', item().TARGET_ENTITY, '/', variables('PipelineStartTime'))",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_workspace_id": {
+                              "value": {
+                                "value": "@item().TARGET_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_lakehouse_id": {
+                              "value": {
+                                "value": "@item().TARGET_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_schema_name": {
+                              "value": {
+                                "value": "@item().TARGET_SCHEMA_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_entity": {
+                              "value": {
+                                "value": "@item().TARGET_ENTITY",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "processing_method": {
+                              "value": {
+                                "value": "@item().PROCESSING_METHOD",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_column": {
+                              "value": {
+                                "value": "@item().WATERMARK_COLUMN",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_value_used": {
+                              "value": {
+                                "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, '1900-01-01')",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Load Staged Parquet to Bronze_AzureSQL",
+                        "dependsOn": [
+                          {
+                            "activity": "Stage AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n      @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze_AzureSQL').output.result.exitValue).rows_read",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze_AzureSQL').output.result.exitValue).rows_written",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze_AzureSQL').output.result.exitValue).watermark_value_used",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Staged Parquet to Bronze_AzureSQL').output.result.exitValue).watermark_value_new",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_Notebook_AzureSQL",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Staged Parquet to Bronze_AzureSQL",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Load Staged Parquet to Bronze_AzureSQL').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Stage_AzureSQL",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Staged Parquet to Bronze_AzureSQL",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Stage AzureSQLDB Source').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_AzureSQL_Stage",
+                        "dependsOn": [
+                          {
+                            "activity": "Stage AzureSQLDB Source",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": "NOTEBOOK_LAKEHOUSE_FILE",
+                    "activities": [
+                      {
+                        "type": "TridentNotebook",
+                        "typeProperties": {
+                          "notebookId": "2dd66d65-5ee5-ab90-45a1-966e043bc59e",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "parameters": {
+                            "meta_orchestration_id": {
+                              "value": {
+                                "value": "@item().META_ORCHESTRATION_ID",
+                                "type": "Expression"
+                              },
+                              "type": "int"
+                            },
+                            "target_workspace_id": {
+                              "value": {
+                                "value": "@item().TARGET_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_lakehouse_id": {
+                              "value": {
+                                "value": "@item().TARGET_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_schema_name": {
+                              "value": {
+                                "value": "@item().TARGET_SCHEMA_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "target_entity": {
+                              "value": {
+                                "value": "@item().TARGET_ENTITY",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "processing_method": {
+                              "value": {
+                                "value": "@item().PROCESSING_METHOD",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "watermark_value_used": {
+                              "value": {
+                                "value": "@if(equals(item().PROCESSING_METHOD, 'INCREMENTAL'), activity('Get Last Watermark').output.firstRow.WATERMARK_VALUE, '1900-01-01')",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "source_workspace_id": {
+                              "value": {
+                                "value": "@item().SOURCE_WORKSPACE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "source_lakehouse_id": {
+                              "value": {
+                                "value": "@item().SOURCE_LAKEHOUSE_ID",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "wildcard_folder_path": {
+                              "value": {
+                                "value": "@item().WILDCARD_FOLDER_PATH",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "file_format": {
+                              "value": {
+                                "value": "@item().FILE_FORMAT",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "sheet_name": {
+                              "value": {
+                                "value": "@item().SHEET_NAME",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            },
+                            "file_has_header_row": {
+                              "value": {
+                                "value": "@item().FILE_HAS_HEADER_ROW",
+                                "type": "Expression"
+                              },
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Load Lakehouse File to Bronze",
+                        "dependsOn": []
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID = @META_INGESTION_LOG_ID,\n       @Status = @Status,\n       @RowsRead = @RowsRead,\n       @RowsWritten = @RowsWritten,\n       @WatermarkValueUsed = @WatermarkValueUsed,\n       @WatermarkValueNew = @WatermarkValueNew,\n      @FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "SUCCESS",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsRead",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).rows_read",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "RowsWritten",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).rows_written",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueUsed",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).watermark_value_used",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "WatermarkValueNew",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@json(activity('Load Lakehouse File to Bronze').output.result.exitValue).watermark_value_new",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Success_Notebook_copy1",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Lakehouse File to Bronze",
+                            "dependencyConditions": [
+                              "Succeeded"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Script",
+                        "typeProperties": {
+                          "scripts": [
+                            {
+                              "text": {
+                                "value": "EXEC [DBO].[spComplete_Ingestion_Log]\n       @META_INGESTION_LOG_ID =    @META_INGESTION_LOG_ID,\n       @Status = @Status,\n@ErrorMessage=@ErrorMessage,\n@FabricMonitorUrl = @FabricMonitorUrl",
+                                "type": "Expression"
+                              },
+                              "type": "NonQuery",
+                              "parameters": [
+                                {
+                                  "name": "META_INGESTION_LOG_ID",
+                                  "type": "Int64",
+                                  "value": {
+                                    "value": "@activity('Start Log').output.outputParameters.META_INGESTION_LOG_ID",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "Status",
+                                  "type": "String",
+                                  "value": "FAILED",
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "ErrorMessage",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "@activity('Load Lakehouse File to Bronze').error.message",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                },
+                                {
+                                  "name": "FabricMonitorUrl",
+                                  "type": "String",
+                                  "value": {
+                                    "value": "https://app.fabric.microsoft.com/workloads/data-pipeline/monitoring/workspaces/@{pipeline().DataFactory}/pipelines/@{pipeline().Pipeline}/@{pipeline().RunId}?experience=data-factory",
+                                    "type": "Expression"
+                                  },
+                                  "direction": "Input"
+                                }
+                              ]
+                            }
+                          ],
+                          "scriptBlockExecutionTimeout": "02:00:00"
+                        },
+                        "connectionSettings": {
+                          "name": "IngestXcel",
+                          "properties": {
+                            "type": "FabricSqlDatabase",
+                            "typeProperties": {
+                              "artifactId": "a7797e2d-0b78-b1bc-4619-19ad5a9b3e80",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000"
+                            },
+                            "externalReferences": {
+                              "connection": "5dc75a5f-3c6d-4cb4-a905-a8c7540e5e89"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Complete Log Failure_Notebook_Load_copy1",
+                        "dependsOn": [
+                          {
+                            "activity": "Load Lakehouse File to Bronze",
+                            "dependencyConditions": [
+                              "Failed"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "defaultActivities": [
+                  {
+                    "type": "Fail",
+                    "typeProperties": {
+                      "message": "Unsupported EXECUTION_METHOD/SOURCE_TECH_TYPE combination",
+                      "errorCode": "1000"
+                    },
+                    "name": "Fail_default_case",
+                    "description": "Unsupported EXECUTION_METHOD/SOURCE_TECH_TYPE combination",
+                    "dependsOn": []
+                  }
+                ]
+              },
+              "name": "Switch Execution Route",
+              "dependsOn": [
+                {
+                  "activity": "Get Last Watermark",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "For Each Bronze Entity",
+        "dependsOn": [
+          {
+            "activity": "Get Bronze Batch",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "PipelineStartTime",
+          "value": {
+            "value": "@utcNow()",
+            "type": "Expression"
+          }
+        },
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Set Pipeline Start Time",
+        "dependsOn": []
+      }
+    ],
+    "parameters": {
+      "TriggerName": {
+        "type": "string",
+        "defaultValue": "TRG_FABRICTRAINING_INGESTXCEL_BRONZE_LOAD_DAILY"
+      },
+      "TargetEntityIds": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "PipelineStartTime": {
+        "type": "String",
+        "defaultValue": "@utcNow()"
+      }
+    }
+  }
+}
