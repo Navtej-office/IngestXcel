@@ -1,0 +1,23 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["DirectLake - IngestXcel"]
+
+annotation PBI_ProTooling = ["DirectLakeOnOneLakeInWeb","WebModelingEdit"]
+
+ref table META_INGESTION_LOG
+ref table META_ORCHESTRATION
+ref table META_CONNECTION_PROPERTY
+ref table META_SOURCE_ENTITY
+ref table META_CONFIGURATION_CORE
+ref table META_CONFIGURATION_ADVANCED
+ref table META_CONNECTION_ENDPOINT
+ref table DATE_DIMENSION
+

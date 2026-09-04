@@ -1,0 +1,313 @@
+table META_INGESTION_LOG
+	lineageTag: dde92e1d-a7ba-483c-bf12-743ec7bee1e2
+	sourceLineageTag: [dbo].[META_INGESTION_LOG]
+
+	measure 'Total Runs' = COUNTROWS(META_INGESTION_LOG)
+		formatString: 0
+		lineageTag: 77ba833d-193f-4060-bf73-21c684715e9b
+
+		changedProperty = Name
+
+	measure 'Successful Runs' = CALCULATE([Total Runs], META_INGESTION_LOG[RUN_STATUS] = "SUCCESS")
+		formatString: 0
+		lineageTag: f6ff7444-ae90-44f1-905d-233ead1c7aa7
+
+		changedProperty = Name
+
+	measure 'Running Now' = CALCULATE([Total Runs], META_INGESTION_LOG[RUN_STATUS] = "RUNNING")
+		formatString: 0
+		lineageTag: 3a266c31-1804-4412-9772-76ff5a3b2180
+
+		changedProperty = Name
+
+	measure 'Skipped Runs' = CALCULATE([Total Runs], META_INGESTION_LOG[RUN_STATUS] = "SKIPPED")
+		formatString: 0
+		lineageTag: b24bae70-41f5-4bc3-896c-ca0ce0b5e13a
+
+		changedProperty = Name
+
+	measure 'Failed Runs' = CALCULATE([Total Runs], META_INGESTION_LOG[RUN_STATUS] = "FAILED")
+		formatString: 0
+		lineageTag: a60ba398-ce98-4617-9fce-299db929ca42
+
+		changedProperty = Name
+
+	measure 'Success Rate %' =
+			
+			DIVIDE(
+			    [Successful Runs],
+			    [Successful Runs] + [Failed Runs]
+			)
+		lineageTag: d7fe8283-9685-48de-a96a-33937e68bf1d
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Total Rows Written' = SUM(META_INGESTION_LOG[ROWS_WRITTEN])
+		formatString: 0
+		lineageTag: a52dd44c-d5f6-4035-9b42-4ade563810d8
+
+		changedProperty = Name
+
+	measure 'Total Rows Rejected' = SUM(META_INGESTION_LOG[ROWS_REJECTED])
+		formatString: 0
+		lineageTag: c860dc3d-4e3c-48f9-ae7c-9a5f31ae0295
+
+		changedProperty = Name
+
+	measure 'Avg Duration (min)' =
+			
+			AVERAGEX(
+			    FILTER(META_INGESTION_LOG, NOT ISBLANK(META_INGESTION_LOG[RUN_END_DT])),
+			    DATEDIFF(META_INGESTION_LOG[RUN_START_DT], META_INGESTION_LOG[RUN_END_DT], MINUTE)
+			)
+		lineageTag: bddcbbb6-68d8-4c6f-8b62-90043614e7b6
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column META_INGESTION_LOG_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: 30b28271-7fe0-4bd6-97f2-409afefcbe1b
+		sourceLineageTag: META_INGESTION_LOG_ID
+		summarizeBy: count
+		sourceColumn: META_INGESTION_LOG_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column META_ORCHESTRATION_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: 1f217d4d-ce4b-4661-9b72-546cb5c30fd3
+		sourceLineageTag: META_ORCHESTRATION_ID
+		summarizeBy: count
+		sourceColumn: META_ORCHESTRATION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column SOURCE_ENTITY_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: aad799fb-ae44-4e8f-89f8-10fe15b016e6
+		sourceLineageTag: SOURCE_ENTITY_ID
+		summarizeBy: count
+		sourceColumn: SOURCE_ENTITY_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column SOURCE_ENTITY_NAME
+		dataType: string
+		lineageTag: 4a6eb6f1-92a5-482c-890a-7ac9b1910d01
+		sourceLineageTag: SOURCE_ENTITY_NAME
+		summarizeBy: none
+		sourceColumn: SOURCE_ENTITY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column TARGET_ENTITY
+		dataType: string
+		lineageTag: 93ade7bb-112e-4fe9-ab9f-6e673cb6fa05
+		sourceLineageTag: TARGET_ENTITY
+		summarizeBy: none
+		sourceColumn: TARGET_ENTITY
+
+		annotation SummarizationSetBy = Automatic
+
+	column PROCESSING_METHOD
+		dataType: string
+		lineageTag: efc1bea4-750d-4446-af2f-5ed1242c4b84
+		sourceLineageTag: PROCESSING_METHOD
+		summarizeBy: none
+		sourceColumn: PROCESSING_METHOD
+
+		annotation SummarizationSetBy = Automatic
+
+	column TRIGGER_NAME
+		dataType: string
+		lineageTag: a66717f6-10ce-4bf4-a17c-3e371c1de987
+		sourceLineageTag: TRIGGER_NAME
+		summarizeBy: none
+		sourceColumn: TRIGGER_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column TRIGGER_EXECUTION_ID
+		dataType: string
+		lineageTag: 42d74814-a360-4e7e-bc5e-53a569e32137
+		sourceLineageTag: TRIGGER_EXECUTION_ID
+		summarizeBy: none
+		sourceColumn: TRIGGER_EXECUTION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column TRIGGER_EXECUTION_START_TIME
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: e95c6a42-142f-4430-8586-6f45c53743c1
+		sourceLineageTag: TRIGGER_EXECUTION_START_TIME
+		summarizeBy: none
+		sourceColumn: TRIGGER_EXECUTION_START_TIME
+
+		annotation SummarizationSetBy = Automatic
+
+	column RUN_START_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 37b2c737-d390-4814-96c6-dd1f76008032
+		sourceLineageTag: RUN_START_DT
+		summarizeBy: none
+		sourceColumn: RUN_START_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	column RUN_END_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 269d6e18-807f-49b2-b076-a1b886a956b8
+		sourceLineageTag: RUN_END_DT
+		summarizeBy: none
+		sourceColumn: RUN_END_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	column RUN_STATUS
+		dataType: string
+		lineageTag: 3d56ad62-14fe-44a1-9195-0898bcdb210e
+		sourceLineageTag: RUN_STATUS
+		summarizeBy: none
+		sourceColumn: RUN_STATUS
+
+		annotation SummarizationSetBy = Automatic
+
+	column WATERMARK_VALUE_USED
+		dataType: string
+		lineageTag: 543b8735-1ea3-41bb-be0f-03194902d6cd
+		sourceLineageTag: WATERMARK_VALUE_USED
+		summarizeBy: none
+		sourceColumn: WATERMARK_VALUE_USED
+
+		annotation SummarizationSetBy = Automatic
+
+	column WATERMARK_VALUE_NEW
+		dataType: string
+		lineageTag: b4aba796-72fa-4564-9aad-8d92b97659e8
+		sourceLineageTag: WATERMARK_VALUE_NEW
+		summarizeBy: none
+		sourceColumn: WATERMARK_VALUE_NEW
+
+		annotation SummarizationSetBy = Automatic
+
+	column ROWS_READ
+		dataType: int64
+		formatString: 0
+		lineageTag: f6995918-3c5c-4711-8bbb-c3eb6efc956c
+		sourceLineageTag: ROWS_READ
+		summarizeBy: sum
+		sourceColumn: ROWS_READ
+
+		annotation SummarizationSetBy = Automatic
+
+	column ROWS_WRITTEN
+		dataType: int64
+		formatString: 0
+		lineageTag: e126c11e-a757-487e-a496-726304c64254
+		sourceLineageTag: ROWS_WRITTEN
+		summarizeBy: sum
+		sourceColumn: ROWS_WRITTEN
+
+		annotation SummarizationSetBy = Automatic
+
+	column ROWS_REJECTED
+		dataType: int64
+		formatString: 0
+		lineageTag: 103bc02f-b884-466d-941c-08cc14505fe9
+		sourceLineageTag: ROWS_REJECTED
+		summarizeBy: sum
+		sourceColumn: ROWS_REJECTED
+
+		annotation SummarizationSetBy = Automatic
+
+	column ERROR_MESSAGE
+		dataType: string
+		lineageTag: 9beed327-dd7d-4fcf-bde7-302e37d13389
+		sourceLineageTag: ERROR_MESSAGE
+		summarizeBy: none
+		sourceColumn: ERROR_MESSAGE
+
+		annotation SummarizationSetBy = Automatic
+
+	column FABRIC_MONITOR_URL
+		dataType: string
+		lineageTag: b616484c-582a-472c-931b-300ebdfb31bb
+		sourceLineageTag: FABRIC_MONITOR_URL
+		summarizeBy: none
+		sourceColumn: FABRIC_MONITOR_URL
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: a749f82e-0f88-4305-bc5d-4358c86183ec
+		sourceLineageTag: CREATED_DT
+		summarizeBy: none
+		sourceColumn: CREATED_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	column DATA_ENDPOINT_NAME
+		dataType: string
+		lineageTag: 805f59fd-9893-40cd-ae5c-c5bc64324f57
+		sourceLineageTag: DATA_ENDPOINT_NAME
+		summarizeBy: none
+		sourceColumn: DATA_ENDPOINT_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_ARTIFACT_TYPE
+		dataType: string
+		lineageTag: ad0122d4-3156-4392-999f-e80ecc53a750
+		sourceLineageTag: EXECUTION_ARTIFACT_TYPE
+		summarizeBy: none
+		sourceColumn: EXECUTION_ARTIFACT_TYPE
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_ARTIFACT_ID
+		dataType: string
+		lineageTag: 753c1b28-7cb0-4d99-94f0-d0513f3c20f4
+		sourceLineageTag: EXECUTION_ARTIFACT_ID
+		summarizeBy: none
+		sourceColumn: EXECUTION_ARTIFACT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ARTIFACT_RUN_ID
+		dataType: string
+		lineageTag: d3850bfe-624f-4ab6-b117-337ea1a030f5
+		sourceLineageTag: ARTIFACT_RUN_ID
+		summarizeBy: none
+		sourceColumn: ARTIFACT_RUN_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DATE_KEY
+		dataType: int64
+		formatString: 0
+		lineageTag: c66cd505-3df1-40ad-9bbe-9f74bc040505
+		sourceLineageTag: DATE_KEY
+		summarizeBy: none
+		sourceColumn: DATE_KEY
+
+		annotation SummarizationSetBy = Automatic
+
+	partition META_INGESTION_LOG = entity
+		mode: directLake
+		source
+			entityName: META_INGESTION_LOG
+			schemaName: dbo
+			expressionSource: 'DirectLake - IngestXcel'
+

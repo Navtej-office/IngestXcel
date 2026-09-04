@@ -1,0 +1,226 @@
+table DATE_DIMENSION
+	lineageTag: 3ac5d08b-aeca-4f66-b8b3-24582d361dc8
+	sourceLineageTag: [dbo].[DATE_DIMENSION]
+
+	column DATE_KEY
+		dataType: int64
+		formatString: 0
+		lineageTag: f7d75690-83e1-40c2-92bd-5cf3835abe2f
+		sourceLineageTag: DATE_KEY
+		summarizeBy: none
+		sourceColumn: DATE_KEY
+
+		annotation SummarizationSetBy = Automatic
+
+	column CALENDAR_DATE
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: fc542849-2dbd-4675-b305-74eb2e453c2f
+		sourceLineageTag: CALENDAR_DATE
+		summarizeBy: none
+		sourceColumn: CALENDAR_DATE
+
+		annotation SummarizationSetBy = Automatic
+
+	column DATE_TEXT
+		dataType: string
+		lineageTag: 08b06c2c-5102-48d1-a2f9-fdef43a45374
+		sourceLineageTag: DATE_TEXT
+		summarizeBy: none
+		sourceColumn: DATE_TEXT
+
+		annotation SummarizationSetBy = Automatic
+
+	column YEAR_NUM
+		dataType: int64
+		formatString: 0
+		lineageTag: 1b9f7cd2-023f-420e-ae39-542de70b6aa4
+		sourceLineageTag: YEAR_NUM
+		summarizeBy: none
+		sourceColumn: YEAR_NUM
+
+		annotation SummarizationSetBy = Automatic
+
+	column QUARTER_NUM
+		dataType: int64
+		formatString: 0
+		lineageTag: 681384cb-a6a3-491c-abb9-a0f357054774
+		sourceLineageTag: QUARTER_NUM
+		summarizeBy: none
+		sourceColumn: QUARTER_NUM
+
+		annotation SummarizationSetBy = Automatic
+
+	column MONTH_NUM
+		dataType: int64
+		formatString: 0
+		lineageTag: 114756a2-448b-4171-862c-97acd883c4d6
+		sourceLineageTag: MONTH_NUM
+		summarizeBy: none
+		sourceColumn: MONTH_NUM
+
+		annotation SummarizationSetBy = Automatic
+
+	column MONTH_NAME
+		dataType: string
+		lineageTag: 7b381848-b98f-42fe-ad07-4e52b7c5e9d7
+		sourceLineageTag: MONTH_NAME
+		summarizeBy: none
+		sourceColumn: MONTH_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column MONTH_NAME_ABBREV
+		dataType: string
+		lineageTag: bec89277-057f-4f64-81a6-c53532095c72
+		sourceLineageTag: MONTH_NAME_ABBREV
+		summarizeBy: none
+		sourceColumn: MONTH_NAME_ABBREV
+
+		annotation SummarizationSetBy = Automatic
+
+	column DAY_NUM
+		dataType: int64
+		formatString: 0
+		lineageTag: 2ca7d2ab-2db4-4014-bf2e-a68625d49456
+		sourceLineageTag: DAY_NUM
+		summarizeBy: none
+		sourceColumn: DAY_NUM
+
+		annotation SummarizationSetBy = Automatic
+
+	column DAY_NAME
+		dataType: string
+		lineageTag: e68d54db-e0a8-4853-854c-6446ed3c62f7
+		sourceLineageTag: DAY_NAME
+		summarizeBy: none
+		sourceColumn: DAY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column DAY_OF_WEEK
+		dataType: int64
+		formatString: 0
+		lineageTag: a98a0186-1f59-4c75-a915-9f4659a2a276
+		sourceLineageTag: DAY_OF_WEEK
+		summarizeBy: none
+		sourceColumn: DAY_OF_WEEK
+
+		annotation SummarizationSetBy = Automatic
+
+	column WEEK_OF_YEAR
+		dataType: int64
+		formatString: 0
+		lineageTag: fd041d5f-75af-48bb-905d-467d147d0bc5
+		sourceLineageTag: WEEK_OF_YEAR
+		summarizeBy: none
+		sourceColumn: WEEK_OF_YEAR
+
+		annotation SummarizationSetBy = Automatic
+
+	column IS_WEEKEND
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: c5d0496a-0fcf-42f3-b06f-d694ad84da57
+		sourceLineageTag: IS_WEEKEND
+		summarizeBy: none
+		sourceColumn: IS_WEEKEND
+
+		annotation SummarizationSetBy = Automatic
+
+	column MONTH_YEAR
+		dataType: string
+		lineageTag: 0eaad358-c03d-432c-a50f-8427df844052
+		sourceLineageTag: MONTH_YEAR
+		summarizeBy: none
+		sourceColumn: MONTH_YEAR
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_YEAR
+		dataType: int64
+		formatString: 0
+		lineageTag: 242a51cd-fa0b-421b-827d-ad7b8f99914c
+		sourceLineageTag: SORT_YEAR
+		summarizeBy: none
+		sourceColumn: SORT_YEAR
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_QUARTER
+		dataType: int64
+		formatString: 0
+		lineageTag: 00820d7b-a89a-448b-aa0a-a9d6f685e04a
+		sourceLineageTag: SORT_QUARTER
+		summarizeBy: none
+		sourceColumn: SORT_QUARTER
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_MONTH
+		dataType: int64
+		formatString: 0
+		lineageTag: 7a19b97d-9123-42f6-ae16-4f8943689533
+		sourceLineageTag: SORT_MONTH
+		summarizeBy: none
+		sourceColumn: SORT_MONTH
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_DAY
+		dataType: int64
+		formatString: 0
+		lineageTag: 8b5497f5-941a-4a01-b24d-95ef9a727195
+		sourceLineageTag: SORT_DAY
+		summarizeBy: none
+		sourceColumn: SORT_DAY
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_DAY_OF_WEEK
+		dataType: int64
+		formatString: 0
+		lineageTag: d293aebc-944f-4ad4-b74c-d1e6bfa962d5
+		sourceLineageTag: SORT_DAY_OF_WEEK
+		summarizeBy: none
+		sourceColumn: SORT_DAY_OF_WEEK
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_WEEK_OF_YEAR
+		dataType: int64
+		formatString: 0
+		lineageTag: d2812baa-e31c-43df-8038-24e4c9fbaefc
+		sourceLineageTag: SORT_WEEK_OF_YEAR
+		summarizeBy: none
+		sourceColumn: SORT_WEEK_OF_YEAR
+
+		annotation SummarizationSetBy = Automatic
+
+	column SORT_YEAR_MONTH
+		dataType: int64
+		formatString: 0
+		lineageTag: 13c7d054-5a27-46dc-84e3-fabf76e63bfd
+		sourceLineageTag: SORT_YEAR_MONTH
+		summarizeBy: none
+		sourceColumn: SORT_YEAR_MONTH
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b35d6cc1-48cf-4ea7-ad74-a88a97cbb8df
+		sourceLineageTag: CREATED_DT
+		summarizeBy: none
+		sourceColumn: CREATED_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DATE_DIMENSION = entity
+		mode: directLake
+		source
+			entityName: DATE_DIMENSION
+			schemaName: dbo
+			expressionSource: 'DirectLake - IngestXcel'
+

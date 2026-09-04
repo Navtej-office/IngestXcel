@@ -14,7 +14,15 @@
    guarantees the log row reflects the actual current metadata
    row, not a possibly-stale copy carried through pipeline
    variables.
---Test Script 
+
+   DATE_KEY: computed here (not via a SQL computed column or a DAX
+   calculated column -- see LESSONS_LEARNED.md for why those don't
+   reach the Direct Lake semantic model) from the same @RunStartDt
+   value used for RUN_START_DT, captured once into a variable so the
+   two columns can never disagree even though SQL Server's
+   once-per-statement evaluation of SYSUTCDATETIME() would already
+   have kept them in sync.
+--Test Script
 DECLARE @LogId BIGINT;
 EXEC [DBO].[spStart_Ingestion_Log]
     @META_ORCHESTRATION_ID = 1,           -- use a real ID from your seeded Bronze rows
@@ -27,7 +35,7 @@ SELECT * FROM [DBO].[META_INGESTION_LOG] WHERE META_INGESTION_LOG_ID = @LogId;
 
    ============================================================ */
 
-CREATE   PROCEDURE [DBO].[spStart_Ingestion_Log]
+CREATE    PROCEDURE [DBO].[spStart_Ingestion_Log]
     @META_ORCHESTRATION_ID       INT,
     @TriggerExecutionId          VARCHAR(500),
     @TriggerExecutionStartTime   DATETIME2(6)  = NULL,
@@ -44,6 +52,8 @@ BEGIN
     DECLARE @ExecutionArtifactType VARCHAR(20);
     DECLARE @ExecutionArtifactId  VARCHAR(1000);
     DECLARE @DataEndpointName     VARCHAR(500);  -- target endpoint's name, paired with TARGET_ENTITY
+    DECLARE @RunStartDt           DATETIME2(6) = SYSUTCDATETIME();
+    DECLARE @DateKey               INT = CONVERT(INT, CONVERT(VARCHAR(8), @RunStartDt, 112));
 
     SELECT
         @SourceEntityId        = O.SOURCE_ENTITY_ID,
@@ -68,12 +78,12 @@ BEGIN
     INSERT INTO [DBO].[META_INGESTION_LOG]
         ([META_ORCHESTRATION_ID], [SOURCE_ENTITY_ID], [SOURCE_ENTITY_NAME], [DATA_ENDPOINT_NAME],
          [TARGET_ENTITY], [PROCESSING_METHOD], [TRIGGER_NAME], [TRIGGER_EXECUTION_ID],
-         [TRIGGER_EXECUTION_START_TIME], [RUN_START_DT], [RUN_STATUS],
+         [TRIGGER_EXECUTION_START_TIME], [RUN_START_DT], [DATE_KEY], [RUN_STATUS],
          [EXECUTION_ARTIFACT_TYPE], [EXECUTION_ARTIFACT_ID])
     VALUES
         (@META_ORCHESTRATION_ID, @SourceEntityId, @SourceEntityName, @DataEndpointName,
          @TargetEntity, @ProcessingMethod, @TriggerName, @TriggerExecutionId,
-         ISNULL(@TriggerExecutionStartTime, SYSUTCDATETIME()), SYSUTCDATETIME(), 'RUNNING',
+         ISNULL(@TriggerExecutionStartTime, @RunStartDt), @RunStartDt, @DateKey, 'RUNNING',
          @ExecutionArtifactType, @ExecutionArtifactId);
 
     SET @META_INGESTION_LOG_ID = SCOPE_IDENTITY();

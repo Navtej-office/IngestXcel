@@ -1,34 +1,4 @@
-/* ============================================================
-   Name        : spValidate_Silver_Metadata
-   Purpose     : Pre-flight check for a Silver trigger batch —
-                 mirrors spValidate_Bronze_Metadata's shape and
-                 style exactly, flagging orchestration rows with
-                 missing or invalid Silver-specific metadata
-                 before you ever run the pipeline against them.
-   Parameters  : @TriggerName VARCHAR(500)
-   Returns     : One row per active entity under the trigger, with
-                 VALIDATION_STATUS ('OK' or 'ISSUES_FOUND') and
-                 VALIDATION_ISSUES (semicolon-separated list of
-                 problems, NULL if none).
-   Checks      : SCD_TYPE present and exactly 'SCD1' or 'SCD2';
-                 if SCD2, all three SCD2_* columns present;
-                 WATERMARK_COLUMN present; QUARANTINE_TABLE_NAME
-                 present; TARGET_ENTITY/PRIMARY_KEYS present;
-                 PROCESSING_METHOD valid; and — Silver-specific —
-                 the Bronze table this entity reads from
-                 (SOURCE_ENTITY_NAME, e.g. 'bronze.person_address')
-                 still has an ACTIVE Bronze orchestration row.
-                 A Silver entity pointed at a deactivated or
-                 renamed Bronze table is a silent data gap, not an
-                 error anywhere else, so it's cheap to catch here.
-   Notes       : Only checks EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
-                 rows, same convention as Bronze. No DEDUP_KEY or
-                 META_CONFIGURATION_ADVANCED checks — deliberately
-                 not part of the design (see spGet_Silver_Batch's
-                 header for why).
-   ============================================================ */
-
-CREATE    PROCEDURE [dbo].[spValidate_Silver_Metadata]
+CREATE PROCEDURE [dbo].[spValidate_Silver_Metadata]
     @TriggerName VARCHAR(500)
 AS
 BEGIN
@@ -47,16 +17,17 @@ BEGIN
             S2C.CONFIGURATION_VALUE AS SCD2_CURRENT_FLAG_COL,
             QTN.CONFIGURATION_VALUE AS QUARANTINE_TABLE_NAME,
 
-            -- Does an active Bronze orchestration row exist for the
-            -- table this Silver entity reads from? SOURCE_ENTITY_NAME
-            -- is expected in the form 'bronze.<table>' — strip the
-            -- prefix and check against Bronze's TARGET_ENTITY.
+            -- Does an active Bronze orchestration row exist for the table this
+            -- Silver entity reads from? SOURCE_ENTITY_NAME is plain (e.g. 'product'),
+            -- matching Bronze's own TARGET_ENTITY exactly — no prefix to strip
+            -- (see ADR-0007: Silver source entities are always named plain, never
+            -- layer-prefixed as 'bronze.product').
             (
                 SELECT COUNT(1)
                 FROM [DBO].[META_ORCHESTRATION] BO
                 WHERE BO.IS_ACTIVEYN = 'Y'
                   AND BO.EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK'
-                  AND BO.TARGET_ENTITY = SUBSTRING(O.SOURCE_ENTITY_NAME, LEN('bronze.') + 1, 4000)
+                  AND BO.TARGET_ENTITY = O.SOURCE_ENTITY_NAME
             ) AS ActiveBronzeSourceCount,
 
             CONCAT(

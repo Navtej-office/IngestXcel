@@ -1,0 +1,9 @@
+expression 'DirectLake - IngestXcel' =
+		let
+		    Source = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/2773bec8-6438-4872-b2ee-d34f1a32b3a9/5a9b3e80-19ad-4619-b1bc-0b78a7797e2d", [HierarchicalNavigation=true])
+		in
+		    Source
+	lineageTag: efb73862-2646-4c77-b1e8-c47c100c842d
+
+	annotation PBI_IncludeFutureArtifacts = False
+
