@@ -26,7 +26,7 @@ table META_SOURCE_ENTITY
 		formatString: 0
 		lineageTag: 3232eba7-96a4-4aaf-b64d-b5fd2e66138a
 		sourceLineageTag: SOURCE_CONNECTION_ENDPOINT_ID
-		summarizeBy: none
+		summarizeBy: count
 		sourceColumn: SOURCE_CONNECTION_ENDPOINT_ID
 
 		annotation SummarizationSetBy = Automatic
