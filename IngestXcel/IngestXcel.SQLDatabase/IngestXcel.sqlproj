@@ -1,11 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build">
-  <Sdk Name="Microsoft.Build.Sql" Version="2.1.0" />
+  <Sdk Name="Microsoft.Build.Sql" Version="2.1" />
   <PropertyGroup>
-    <Name>IngestXcel</Name>
-    <ProjectGuid>{00000000-0000-0000-0000-000000000000}</ProjectGuid>
+    <AllowSnapshotIsolation>True</AllowSnapshotIsolation>
+    <AutoCreateStatistics>True</AutoCreateStatistics>
+    <AutoUpdateStatistics>True</AutoUpdateStatistics>
+    <CatalogCollation>SQL_Latin1_General_CP1_CI_AS</CatalogCollation>
+    <ChangeTrackingAutoCleanup>False</ChangeTrackingAutoCleanup>
+    <CursorCloseOnCommit>False</CursorCloseOnCommit>
+    <DbScopedConfigMaxDOP>8</DbScopedConfigMaxDOP>
+    <DefaultCursor>GLOBAL</DefaultCursor>
+    <DefaultFilegroup>PRIMARY</DefaultFilegroup>
     <DSP>Microsoft.Data.Tools.Schema.Sql.SqlDbFabricDatabaseSchemaProvider</DSP>
+    <FileStreamDirectoryName></FileStreamDirectoryName>
+    <IsQueryStoreOn>True</IsQueryStoreOn>
     <ModelCollation>1033, CI</ModelCollation>
+    <Name>IngestXcel-5a9b3e80-19ad-4619-b1bc-0b78a7797e2d</Name>
+    <PageVerify>CHECKSUM</PageVerify>
+    <ProjectGuid>{00000000-0000-0000-0000-000000000000}</ProjectGuid>
+    <QueryStoreCaptureMode>AUTO</QueryStoreCaptureMode>
+    <QueryStoreMaxPlansPerQuery>200</QueryStoreMaxPlansPerQuery>
+    <QueryStoreMaxStorageSizeMB>100</QueryStoreMaxStorageSizeMB>
+    <QueryStoreStaleQueryThreshold>30</QueryStoreStaleQueryThreshold>
+    <QueryStoreStaleQueryThresholdDays>30</QueryStoreStaleQueryThresholdDays>
+    <ReadCommittedSnapshot>True</ReadCommittedSnapshot>
+    <RecursiveTriggers>False</RecursiveTriggers>
+    <ServiceBrokerOption>EnableBroker</ServiceBrokerOption>
+    <TargetRecoveryTimePeriod>60</TargetRecoveryTimePeriod>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SqlServer.Dacpacs.DbFabric">

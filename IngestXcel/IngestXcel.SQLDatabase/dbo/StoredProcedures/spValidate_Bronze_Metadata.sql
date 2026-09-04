@@ -1,23 +1,4 @@
-/* ============================================================
-   Name        : spValidate_Bronze_Metadata
-   Purpose     : Pre-flight check for a Bronze trigger batch —
-                 flags orchestration rows with missing or invalid
-                 metadata that would cause the pipeline to fail
-                 or silently misbehave before you ever run it.
-   Parameters  : @TriggerName VARCHAR(500)
-   Returns     : One row per active entity under the trigger, with
-                 VALIDATION_STATUS ('OK' or 'ISSUES_FOUND') and
-                 VALIDATION_ISSUES (semicolon-separated list of
-                 problems, NULL if none).
-   Notes       : Updated post-Phase-0 for: CONNECTION_ID (renamed
-                 from FABRIC_CONNECTION_ID), and the new required
-                 EXECUTION_METHOD field (replaces the retired
-                 SCHEMA_EVOLUTION_REQUIRED flag). Only checks
-                 EXECUTION_ARTIFACT_TYPE = 'FRAMEWORK' rows —
-                 extensibility rows are handled by separate logic.
-   ============================================================ */
-
-CREATE   PROCEDURE [DBO].[spValidate_Bronze_Metadata]
+CREATE PROCEDURE [dbo].[spValidate_Bronze_Metadata]
     @TriggerName VARCHAR(500)
 AS
 BEGIN
@@ -65,7 +46,12 @@ BEGIN
                 CASE WHEN TP.TARGET_WORKSPACE_ID IS NULL THEN 'Missing target WORKSPACE_ID property; ' END,
                 CASE WHEN TP.TARGET_LAKEHOUSE_ID IS NULL THEN 'Missing target LAKEHOUSE_ID property; ' END,
                 CASE WHEN O.TARGET_ENTITY IS NULL OR O.TARGET_ENTITY = '' THEN 'Missing TARGET_ENTITY; ' END,
-                CASE WHEN O.PRIMARY_KEYS IS NULL OR O.PRIMARY_KEYS = '' THEN 'Missing PRIMARY_KEYS; ' END,
+                -- A keyless entity is only valid when EXECUTION_METHOD=NOTEBOOK
+                -- (see ADR-0008: PIPELINE's Table Action can't be made dynamic
+                -- per-entity, so a keyless PIPELINE entity would be a genuine bug).
+                CASE WHEN (O.PRIMARY_KEYS IS NULL OR O.PRIMARY_KEYS = '')
+                          AND ISNULL(EM.CONFIGURATION_VALUE, '') != 'NOTEBOOK'
+                     THEN 'Missing PRIMARY_KEYS; ' END,
                 CASE WHEN O.PROCESSING_METHOD NOT IN ('FULL','INCREMENTAL')
                      THEN CONCAT('Invalid PROCESSING_METHOD ''', O.PROCESSING_METHOD, ''''';') END,
                 CASE WHEN O.PROCESSING_METHOD = 'INCREMENTAL' AND WM.CONFIGURATION_VALUE IS NULL
