@@ -1,0 +1,93 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "be67dee033a8c2c88a41",
+  "position": {
+    "x": 11.428571428571429,
+    "y": 647.14285714285722,
+    "z": 12000,
+    "height": 355.71428571428572,
+    "width": 867.14285714285722,
+    "tabOrder": 11000
+  },
+  "visual": {
+    "visualType": "hundredPercentStackedColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DATE_DIMENSION"
+                    }
+                  },
+                  "Property": "CALENDAR_DATE"
+                }
+              },
+              "queryRef": "DATE_DIMENSION.CALENDAR_DATE",
+              "nativeQueryRef": "CALENDAR_DATE",
+              "active": true
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "META_INGESTION_LOG"
+                    }
+                  },
+                  "Property": "RUN_STATUS"
+                }
+              },
+              "queryRef": "META_INGESTION_LOG.RUN_STATUS",
+              "nativeQueryRef": "RUN_STATUS"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "META_INGESTION_LOG"
+                    }
+                  },
+                  "Property": "Total Runs"
+                }
+              },
+              "queryRef": "META_INGESTION_LOG.Total Runs",
+              "nativeQueryRef": "Total Runs"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DATE_DIMENSION"
+                  }
+                },
+                "Property": "CALENDAR_DATE"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

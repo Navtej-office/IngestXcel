@@ -1,112 +1,106 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "cc10fe0d60b96f61034b",
+  "name": "4ec7e39d40824f57f89a",
   "position": {
-    "x": 974,
-    "y": 594,
-    "z": 6000,
-    "height": 462,
-    "width": 449,
-    "tabOrder": 1000
+    "x": 1287,
+    "y": 12,
+    "z": 3000,
+    "height": 50,
+    "width": 199,
+    "tabOrder": 2000
   },
   "visual": {
-    "visualType": "lineChart",
+    "visualType": "multiRowCard",
     "query": {
       "queryState": {
-        "Category": {
+        "Values": {
           "projections": [
             {
               "field": {
-                "Column": {
+                "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "META_ORCHESTRATION"
+                      "Entity": "META_INGESTION_LOG"
                     }
                   },
-                  "Property": "CREATED_DT"
+                  "Property": "Total Rows Read"
                 }
               },
-              "queryRef": "META_ORCHESTRATION.CREATED_DT",
-              "nativeQueryRef": "CREATED_DT",
-              "active": true
-            }
-          ]
-        },
-        "Y": {
-          "projections": [
-            {
-              "field": {
-                "Aggregation": {
-                  "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "META_INGESTION_LOG"
-                        }
-                      },
-                      "Property": "ROWS_READ"
-                    }
-                  },
-                  "Function": 0
-                }
-              },
-              "queryRef": "Sum(META_INGESTION_LOG.ROWS_READ)",
-              "nativeQueryRef": "Sum of ROWS_READ",
-              "displayName": "Sum of ROWS_READ"
+              "queryRef": "META_INGESTION_LOG.Total Rows Read",
+              "nativeQueryRef": "Total Rows Read"
             }
           ]
         }
-      },
-      "sortDefinition": {
-        "sort": [
-          {
-            "field": {
-              "Column": {
-                "Expression": {
-                  "SourceRef": {
-                    "Entity": "META_ORCHESTRATION"
-                  }
-                },
-                "Property": "CREATED_DT"
-              }
-            },
-            "direction": "Ascending"
-          }
-        ]
       }
     },
     "objects": {
-      "labels": [
+      "card": [
         {
           "properties": {
-            "show": {
+            "barColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 2,
+                      "Percent": 0
+                    }
+                  }
+                }
+              }
+            },
+            "barWeight": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "4L"
                 }
               }
             }
           }
         }
       ],
-      "dataPoint": [
+      "dataLabels": [
         {
           "properties": {
-            "fill": {
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Segoe UI'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "11L"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "categoryLabels": [
+        {
+          "properties": {
+            "color": {
               "solid": {
                 "color": {
                   "expr": {
                     "ThemeDataColor": {
-                      "ColorId": 4,
-                      "Percent": 0
+                      "ColorId": 1,
+                      "Percent": 0.4
                     }
                   }
                 }
               }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "11L"
+                }
+              }
             }
-          },
-          "selector": {
-            "metadata": "Sum(META_INGESTION_LOG.ROWS_READ)"
           }
         }
       ]
@@ -137,6 +131,13 @@
               }
             },
             "showPinButton": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "showPersonalizeVisualButton": {
               "expr": {
                 "Literal": {
                   "Value": "false"

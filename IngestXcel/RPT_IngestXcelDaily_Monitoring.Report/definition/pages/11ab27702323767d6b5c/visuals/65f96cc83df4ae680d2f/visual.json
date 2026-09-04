@@ -1,0 +1,74 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "65f96cc83df4ae680d2f",
+  "position": {
+    "x": 896.54794520547944,
+    "y": 646.52054794520552,
+    "z": 11000,
+    "height": 341.75342465753425,
+    "width": 1023.7808219178082,
+    "tabOrder": 10000
+  },
+  "visual": {
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "META_INGESTION_LOG"
+                    }
+                  },
+                  "Property": "SOURCE_ENTITY_NAME"
+                }
+              },
+              "queryRef": "META_INGESTION_LOG.SOURCE_ENTITY_NAME",
+              "nativeQueryRef": "SOURCE_ENTITY_NAME",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "META_INGESTION_LOG"
+                    }
+                  },
+                  "Property": "Failed Runs"
+                }
+              },
+              "queryRef": "META_INGESTION_LOG.Failed Runs",
+              "nativeQueryRef": "Failed Runs"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "META_INGESTION_LOG"
+                  }
+                },
+                "Property": "SOURCE_ENTITY_NAME"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
