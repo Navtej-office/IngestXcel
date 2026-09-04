@@ -9,6 +9,15 @@
         "page": "2.3.1"
       },
       "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "IngestXcel_Pipeline_Monitoring7420303212976113.json",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "RegisteredResources"
     }
   },
   "objects": {
@@ -31,7 +40,7 @@
           "expanded": {
             "expr": {
               "Literal": {
-                "Value": "true"
+                "Value": "false"
               }
             }
           }
@@ -49,6 +58,17 @@
           "name": "Fluent2-CY26SU08",
           "path": "BaseThemes/Fluent2-CY26SU08.json",
           "type": "BaseTheme"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "IngestXcel_Pipeline_Monitoring7420303212976113.json",
+          "path": "IngestXcel_Pipeline_Monitoring7420303212976113.json",
+          "type": "CustomTheme"
         }
       ]
     }

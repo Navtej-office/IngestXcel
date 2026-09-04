@@ -142,37 +142,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "21ebc8dba475f569d54e",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "META_ORCHESTRATION"
-              }
-            },
-            "Property": "CREATED_DT"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "60b6c8aec64eaa430039",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "META_INGESTION_LOG"
-              }
-            },
-            "Property": "Total Rows Read"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }
