@@ -68,6 +68,12 @@ table META_INGESTION_LOG
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
+	measure 'Total Rows Read' = SUM(META_INGESTION_LOG[ROWS_READ])
+		formatString: 0
+		lineageTag: 48167f39-2e92-4557-ab87-fa03061c217c
+
+		changedProperty = Name
+
 	column META_INGESTION_LOG_ID
 		dataType: int64
 		formatString: 0
@@ -83,7 +89,7 @@ table META_INGESTION_LOG
 		formatString: 0
 		lineageTag: 1f217d4d-ce4b-4661-9b72-546cb5c30fd3
 		sourceLineageTag: META_ORCHESTRATION_ID
-		summarizeBy: count
+		summarizeBy: none
 		sourceColumn: META_ORCHESTRATION_ID
 
 		annotation SummarizationSetBy = Automatic
