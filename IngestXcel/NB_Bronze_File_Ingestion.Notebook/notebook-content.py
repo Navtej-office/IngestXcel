@@ -8,12 +8,12 @@
 # META   },
 # META   "dependencies": {
 # META     "lakehouse": {
-# META       "default_lakehouse": "7e491b48-5978-4a73-bbe7-b98df9812e65",
+# META       "default_lakehouse": "a6ee5274-a432-4395-b3a2-4f18886fce18",
 # META       "default_lakehouse_name": "Bronze_LH",
 # META       "default_lakehouse_workspace_id": "2773bec8-6438-4872-b2ee-d34f1a32b3a9",
 # META       "known_lakehouses": [
 # META         {
-# META           "id": "7e491b48-5978-4a73-bbe7-b98df9812e65"
+# META           "id": "a6ee5274-a432-4395-b3a2-4f18886fce18"
 # META         }
 # META       ]
 # META     },
@@ -25,24 +25,20 @@
 
 # PARAMETERS CELL ********************
 
-# ================================================================
-# CELL 1 - NOTEBOOK PARAMETERS
-# ================================================================
-meta_orchestration_id = None
-target_workspace_id = None
-target_lakehouse_id = None
-target_schema_name = None
-target_entity = None
-processing_method = None
-watermark_value_used = None
-source_workspace_id = None
-source_lakehouse_id = None
-wildcard_folder_path = None      # folder or exact file path (not a glob unless it contains *)
-file_format = None                # 'EXCEL' or 'CSV' for now
-sheet_name = None                 # EXCEL only - single sheet, comma list, or '*' for all
+meta_orchestration_id = 11
+target_workspace_id = "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
+target_lakehouse_id = "a6ee5274-a432-4395-b3a2-4f18886fce18"
+target_schema_name = "ingestxcel_files"
+target_entity = "book_catalog"
+processing_method = "INCREMENTAL"
+watermark_value_used = "1900-01-01"
+source_workspace_id = "2773bec8-6438-4872-b2ee-d34f1a32b3a9"
+source_lakehouse_id = "a6ee5274-a432-4395-b3a2-4f18886fce18"
+wildcard_folder_path = "book_catalog/book_catalog_v*.csv"
+file_format = "CSV"
+sheet_name = None
 file_has_header_row = "true"
-delimiter = ","                   # CSV only
-
+delimiter = ","
 
 # METADATA ********************
 

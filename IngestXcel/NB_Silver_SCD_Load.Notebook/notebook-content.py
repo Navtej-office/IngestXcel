@@ -48,7 +48,7 @@
 # ================================================================
 # CELL 1 - PARAMETERS
 # ================================================================
- 
+
 meta_orchestration_id = None
 source_workspace_id = None
 source_lakehouse_id = None
@@ -65,7 +65,7 @@ scd2_start_date_col = None  # only meaningful when scd_type = "SCD2"
 scd2_end_date_col = None
 scd2_current_flag_col = None
 quarantine_table_name = None
- 
+
 
 # METADATA ********************
 
@@ -181,18 +181,17 @@ except Exception as e:
 
 # CELL ********************
 
-
 # ================================================================
 # CELL 5 - WRITE QUARANTINED ROWS
 # ================================================================
 # Physically persists quarantined rows (not just a count) so they're
 # inspectable later (Must-Have #7).
- 
+
 try:
     if rows_quarantined > 0:
         quarantine_path = (
             f"abfss://{target_workspace_id}@onelake.dfs.fabric.microsoft.com/"
-            f"{target_lakehouse_id}/Tables/{quarantine_table_name}"
+            f"{target_lakehouse_id}/Tables/{source_schema_name}/{quarantine_table_name}"
         )
         (
             quarantined_null_pk.write
@@ -203,7 +202,6 @@ try:
         )
 except Exception as e:
     raise Exception(f"[Write Quarantine] Failed to write to quarantine table: {e}") from e
- 
 
 # METADATA ********************
 
@@ -354,18 +352,34 @@ except Exception as e:
 
 # CELL ********************
 
-
 # ================================================================
 # CELL 7 - POST-WRITE ROW-COUNT RECONCILIATION
 # ================================================================
 # Should-Have #9: compare rows processed vs. rows actually merged, log a
 # warning (not blocking) if they don't match. A mismatch here doesn't fail
 # the run - it's a signal to investigate, not a hard stop.
+#
+# Fix: for a real SCD2 merge (table already existed), rows_merged legitimately
+# equals 2*changed_keys + new_keys - each changed key produces a closed-out
+# old row AND a new current row, while deduped_data only ever has one row
+# per key. Comparing rows_merged straight against deduped_data.count() was
+# producing a false MISMATCH on every run with real changed rows, which is
+# the common case, not an edge case. changed_keys/new_keys only exist in
+# scope when Cell 6 actually took the real-merge SCD2 branch (not SCD1, and
+# not SCD2's first-ever bootstrap load, where every row is brand new and a
+# 1:1 comparison is correct) - checked via globals() rather than assuming.
  
 try:
-    expected_rows = deduped_data.count()
+    if scd_type == "SCD2" and "changed_keys" in globals() and "new_keys" in globals():
+        changed_count = changed_keys.count()
+        new_count = new_keys.count()
+        expected_rows = (2 * changed_count) + new_count
+        reconciliation_note = f"expected(2*changed[{changed_count}]+new[{new_count}])={expected_rows}, rows_merged={rows_merged}"
+    else:
+        expected_rows = deduped_data.count()
+        reconciliation_note = f"expected(deduped_count)={expected_rows}, rows_merged={rows_merged}"
+
     reconciliation_status = "OK" if rows_merged == expected_rows else "MISMATCH"
-    reconciliation_note = f"expected(deduped_count)={expected_rows}, rows_merged={rows_merged}"
 except Exception as e:
     reconciliation_status = "ERROR"
     reconciliation_note = str(e)

@@ -1,0 +1,179 @@
+table META_ORCHESTRATION
+	lineageTag: af6f79ed-22bb-4bd5-8954-2abe6c1258eb
+	sourceLineageTag: [dbo].[META_ORCHESTRATION]
+
+	column META_ORCHESTRATION_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: 6657b7f9-ddcb-4fb3-864d-26b86a9ddc14
+		sourceLineageTag: META_ORCHESTRATION_ID
+		summarizeBy: count
+		sourceColumn: META_ORCHESTRATION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column TRIGGER_NAME
+		dataType: string
+		lineageTag: 40b38076-a0c4-4e45-950f-c84df94119f3
+		sourceLineageTag: TRIGGER_NAME
+		summarizeBy: none
+		sourceColumn: TRIGGER_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column SOURCE_ENTITY_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: bd3b0776-e2ec-492a-9342-f6bf710f44c5
+		sourceLineageTag: SOURCE_ENTITY_ID
+		summarizeBy: count
+		sourceColumn: SOURCE_ENTITY_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column SOURCE_ENTITY_NAME
+		dataType: string
+		lineageTag: 1a6139a4-c45f-49e2-a337-66ac825a0cd7
+		sourceLineageTag: SOURCE_ENTITY_NAME
+		summarizeBy: none
+		sourceColumn: SOURCE_ENTITY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column ORDER_OF_OPERATIONS
+		dataType: int64
+		formatString: 0
+		lineageTag: ee78c8f5-9a5a-42e4-86e0-dd7334a43eb4
+		sourceLineageTag: ORDER_OF_OPERATIONS
+		summarizeBy: sum
+		sourceColumn: ORDER_OF_OPERATIONS
+
+		annotation SummarizationSetBy = Automatic
+
+	column TARGET_ENTITY
+		dataType: string
+		lineageTag: bf2e5f0c-09ab-4aad-a8e2-65599033b791
+		sourceLineageTag: TARGET_ENTITY
+		summarizeBy: none
+		sourceColumn: TARGET_ENTITY
+
+		annotation SummarizationSetBy = Automatic
+
+	column PRIMARY_KEYS
+		dataType: string
+		lineageTag: 42d7f628-0105-4485-a93b-702ef72a4f1b
+		sourceLineageTag: PRIMARY_KEYS
+		summarizeBy: none
+		sourceColumn: PRIMARY_KEYS
+
+		annotation SummarizationSetBy = Automatic
+
+	column PROCESSING_METHOD
+		dataType: string
+		lineageTag: 79a555f3-f9eb-485e-b7df-e33801ef4c5e
+		sourceLineageTag: PROCESSING_METHOD
+		summarizeBy: none
+		sourceColumn: PROCESSING_METHOD
+
+		annotation SummarizationSetBy = Automatic
+
+	column IS_ACTIVEYN
+		dataType: string
+		lineageTag: 3ca923ef-bc48-4857-846a-a545ac003adf
+		sourceLineageTag: IS_ACTIVEYN
+		summarizeBy: none
+		sourceColumn: IS_ACTIVEYN
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_BY
+		dataType: string
+		lineageTag: 1526101f-524b-4c12-8e01-d33879d3b0c9
+		sourceLineageTag: CREATED_BY
+		summarizeBy: none
+		sourceColumn: CREATED_BY
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 1664f470-b154-4d4e-911c-4eed922537b3
+		sourceLineageTag: CREATED_DT
+		summarizeBy: none
+		sourceColumn: CREATED_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	column LAST_UPDATED_BY
+		dataType: string
+		lineageTag: ef145450-92cd-433d-bf4b-a8d37bb07937
+		sourceLineageTag: LAST_UPDATED_BY
+		summarizeBy: none
+		sourceColumn: LAST_UPDATED_BY
+
+		annotation SummarizationSetBy = Automatic
+
+	column LAST_UPDATED_DT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: a5bf2f41-fae1-4c99-8a29-4841bf4f16f3
+		sourceLineageTag: LAST_UPDATED_DT
+		summarizeBy: none
+		sourceColumn: LAST_UPDATED_DT
+
+		annotation SummarizationSetBy = Automatic
+
+	column META_CONNECTION_ENDPOINT_ID
+		dataType: int64
+		formatString: 0
+		lineageTag: f34dc163-3264-4d72-9570-2c2663332643
+		sourceLineageTag: META_CONNECTION_ENDPOINT_ID
+		summarizeBy: count
+		sourceColumn: META_CONNECTION_ENDPOINT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_ARTIFACT_TYPE
+		dataType: string
+		lineageTag: baeffa13-0da6-4aca-95f2-316600b7c58f
+		sourceLineageTag: EXECUTION_ARTIFACT_TYPE
+		summarizeBy: none
+		sourceColumn: EXECUTION_ARTIFACT_TYPE
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_WORKSPACE_ID
+		dataType: string
+		lineageTag: e5108995-98c1-4ee7-9219-c348f2a57ee9
+		sourceLineageTag: EXECUTION_WORKSPACE_ID
+		summarizeBy: none
+		sourceColumn: EXECUTION_WORKSPACE_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_ARTIFACT_ID
+		dataType: string
+		lineageTag: a5feabb7-52c2-4f6a-9a9d-58f32702240c
+		sourceLineageTag: EXECUTION_ARTIFACT_ID
+		summarizeBy: none
+		sourceColumn: EXECUTION_ARTIFACT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EXECUTION_ARTIFACT_PARAMS
+		dataType: string
+		lineageTag: 79df735d-374d-49e7-b1bf-d23a369ee28b
+		sourceLineageTag: EXECUTION_ARTIFACT_PARAMS
+		summarizeBy: none
+		sourceColumn: EXECUTION_ARTIFACT_PARAMS
+
+		annotation SummarizationSetBy = Automatic
+
+	partition META_ORCHESTRATION = entity
+		mode: directLake
+		source
+			entityName: META_ORCHESTRATION
+			schemaName: dbo
+			expressionSource: 'DirectLake - IngestXcel'
+
