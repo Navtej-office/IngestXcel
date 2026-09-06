@@ -4,10 +4,10 @@
   "position": {
     "x": 906.90410958904113,
     "y": 108,
-    "z": 12001,
+    "z": 13000,
     "height": 233.75342465753425,
     "width": 1013.4246575342465,
-    "tabOrder": 11001
+    "tabOrder": 12000
   },
   "visual": {
     "visualType": "slicer",
@@ -59,14 +59,14 @@
             "startDate": {
               "expr": {
                 "Literal": {
-                  "Value": "datetime'2020-01-01T00:00:00'"
+                  "Value": "datetime'2020-05-14T00:00:00'"
                 }
               }
             },
             "endDate": {
               "expr": {
                 "Literal": {
-                  "Value": "datetime'2035-08-11T00:00:00'"
+                  "Value": "datetime'2026-10-23T00:00:00'"
                 }
               }
             },
@@ -112,7 +112,7 @@
                             },
                             "Right": {
                               "Literal": {
-                                "Value": "datetime'2020-01-01T00:00:00'"
+                                "Value": "datetime'2020-05-14T00:00:00'"
                               }
                             }
                           }
@@ -132,7 +132,7 @@
                             },
                             "Right": {
                               "Literal": {
-                                "Value": "datetime'2035-08-12T00:00:00'"
+                                "Value": "datetime'2026-10-24T00:00:00'"
                               }
                             }
                           }

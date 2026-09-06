@@ -379,3 +379,25 @@ spark.sql("TRUNCATE TABLE fabrictraining_ingestxcel.person_businessentity")
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+display(spark.sql("SHOW SCHEMAS"))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+display(spark.sql("SHOW TABLES IN <schema_name>"))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }

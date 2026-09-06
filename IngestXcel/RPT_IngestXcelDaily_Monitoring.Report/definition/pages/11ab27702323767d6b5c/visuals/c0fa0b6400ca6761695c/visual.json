@@ -72,5 +72,37 @@
       }
     },
     "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "a2d13b9a470d4c6ef9ad",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "META_INGESTION_LOG"
+              }
+            },
+            "Property": "RUN_STATUS"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "e6a366680d55b9bcee8d",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "META_INGESTION_LOG"
+              }
+            },
+            "Property": "Total Runs"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }
