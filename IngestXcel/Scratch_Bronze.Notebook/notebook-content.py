@@ -437,3 +437,115 @@ spark.sql("TRUNCATE TABLE fabrictraining_ingestxcel.person_businessentity")
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+# ============================================================
+# Gold Demo — Bronze table skeletons
+# Tables: sales_customer, sales_salesterritory,
+#         sales_salesorderheader, sales_salesorderdetail
+#
+# Run this as a cell in a Fabric notebook with Bronze_LH set as
+# the DEFAULT LAKEHOUSE. The Lakehouse SQL analytics endpoint is
+# read-only (no DDL) per PLATFORM_CONSTRAINTS.md, so this has to
+# go through Spark, not a T-SQL script.
+#
+# IMPORTANT: replace bronze_schema below with whatever schema
+# `production_product` already lives under in Bronze_LH (check
+# Lakehouse Explorer) — these new tables share the same source
+# system and must land in the same BRONZE_SCHEMA_ALIAS schema,
+# per ADR-0003.
+#
+# One deliberate deviation from strict AS-IS Bronze: SalesTerritory's
+# source column "Group" is a reserved word in Spark SQL, so it's
+# renamed to SalesTerritoryGroup here rather than fought with
+# backtick-quoting throughout the pipeline. Flagging this
+# explicitly rather than silently renaming it.
+# ============================================================
+
+bronze_schema = "fabrictraining_ingestxcel"  # e.g. whatever production_product uses today
+
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {bronze_schema}.sales_customer (
+    CustomerID      INT,
+    PersonID        INT,
+    StoreID         INT,
+    TerritoryID     INT,
+    AccountNumber   STRING,
+    rowguid         STRING,
+    ModifiedDate    TIMESTAMP
+) USING DELTA
+""")
+
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {bronze_schema}.sales_salesterritory (
+    TerritoryID           INT,
+    Name                  STRING,
+    CountryRegionCode     STRING,
+    SalesTerritoryGroup   STRING,
+    SalesYTD              DECIMAL(19,4),
+    SalesLastYear         DECIMAL(19,4),
+    CostYTD               DECIMAL(19,4),
+    CostLastYear          DECIMAL(19,4),
+    rowguid               STRING,
+    ModifiedDate          TIMESTAMP
+) USING DELTA
+""")
+
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {bronze_schema}.sales_salesorderheader (
+    SalesOrderID            INT,
+    RevisionNumber          SMALLINT,
+    OrderDate               TIMESTAMP,
+    DueDate                 TIMESTAMP,
+    ShipDate                TIMESTAMP,
+    Status                  SMALLINT,
+    OnlineOrderFlag         BOOLEAN,
+    SalesOrderNumber        STRING,
+    PurchaseOrderNumber     STRING,
+    AccountNumber           STRING,
+    CustomerID              INT,
+    SalesPersonID           INT,
+    TerritoryID             INT,
+    BillToAddressID         INT,
+    ShipToAddressID         INT,
+    ShipMethodID             INT,
+    CreditCardID            INT,
+    CreditCardApprovalCode  STRING,
+    CurrencyRateID          INT,
+    SubTotal                DECIMAL(19,4),
+    TaxAmt                  DECIMAL(19,4),
+    Freight                 DECIMAL(19,4),
+    TotalDue                DECIMAL(19,4),
+    Comment                 STRING,
+    rowguid                 STRING,
+    ModifiedDate            TIMESTAMP
+) USING DELTA
+""")
+
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {bronze_schema}.sales_salesorderdetail (
+    SalesOrderID            INT,
+    SalesOrderDetailID      INT,
+    CarrierTrackingNumber   STRING,
+    OrderQty                SMALLINT,
+    ProductID               INT,
+    SpecialOfferID          INT,
+    UnitPrice               DECIMAL(19,4),
+    UnitPriceDiscount       DECIMAL(19,4),
+    LineTotal                DECIMAL(19,4),
+    rowguid                 STRING,
+    ModifiedDate            TIMESTAMP
+) USING DELTA
+""")
+
+print("Bronze skeleton tables created (or already existed) under schema:", bronze_schema)
+for t in ["sales_customer", "sales_salesterritory", "sales_salesorderheader", "sales_salesorderdetail"]:
+    display(spark.sql(f"DESCRIBE TABLE {bronze_schema}.{t}"))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
