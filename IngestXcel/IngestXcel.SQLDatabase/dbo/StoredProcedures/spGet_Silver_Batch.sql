@@ -6,9 +6,9 @@
 --               exactly. Feeds the ForEach loop in PL_Silver_Load.
 --
 -- Key design point: the "source" for every Silver entity is Bronze's own
--- Lakehouse table, not the original external system. Per ISD Accelerator's
--- confirmed convention (each layer transition gets its own orchestration
--- row — a Bronze load and a Silver load for the same business entity are
+-- Lakehouse table, not the original external system. Per the confirmed
+-- convention that each layer transition gets its own orchestration row
+-- (a Bronze load and a Silver load for the same business entity are
 -- two separate META_ORCHESTRATION_ID rows, never one shared row), each
 -- Silver entity has its own META_SOURCE_ENTITY row (e.g. 'bronze.person_
 -- address') whose SOURCE_CONNECTION_ENDPOINT_ID points at Bronze's own
@@ -179,4 +179,3 @@ BEGIN
 END
 
 GO
-
