@@ -20,9 +20,9 @@ type-mapping failure: `ParquetSink` just serializes whatever the query returns, 
 type conversion (e.g. `.STAsText()` for a geography column) happens in the query text itself,
 before the type-mapping problem can occur.
 
-Pattern adapted from the ISD Accelerator reference framework's `pipeline_stage_and_batch`
-approach, deliberately scoped down to Bronze-only/append-only — none of its Silver/Gold
-SCD-merge, schema-drift-logging, or custom-function machinery was pulled in.
+Pattern adapted from a common stage-and-batch ingestion approach, deliberately scoped down to
+Bronze-only/append-only — none of the broader SCD-merge, schema-drift-logging, or
+custom-function machinery from that wider pattern was pulled in.
 
 **`SOURCE_QUERY_OVERRIDE`** (new `CONFIGURATION_NAME`, category `BRONZE`, `NOTEBOOK`-only): when
 present, replaces the pipeline's auto-generated `SELECT * FROM ... WHERE ...` with a
@@ -42,8 +42,8 @@ Silver existed, specifically so a future Silver notebook could reuse the exact s
 failure, the notebook lets the exception propagate uncaught (after step-tagging it — see below)
 so the Notebook activity itself reports Failed.
 
-**Step-tagged error handling:** adapted from ISD Accelerator's `Activity_Run_Logs`/`Step_Name`
-pattern, scoped down deliberately — each logical phase of a notebook is wrapped in its own
+**Step-tagged error handling:** adapted from a common activity-run-logging pattern (tagging
+each logical step by name), scoped down deliberately — each logical phase of a notebook is wrapped in its own
 try/except, re-raising with a fixed step prefix (e.g. `[Load Staged Parquet To Bronze] Delta
 write failed: <short reason>`) rather than adding a second structured logging table. Chosen
 because these notebooks are a handful of cells; revisit a real step-log table only if
