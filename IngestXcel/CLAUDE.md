@@ -158,8 +158,8 @@ evolves. Do not silently change or "improve" them; if a change seems warranted, 
   around auth type, load type, or error handling for a new source type not yet covered.
 - If a request conflicts with a Section 2 principle or an existing ADR, say so before proceeding
   rather than implementing the conflict.
-- Check the reference framework (ISD Accelerator) first for any genuine design ambiguity, and
-  state explicitly whether it matches before proposing an original approach.
+- Check established medallion-architecture reference patterns first for any genuine design
+  ambiguity, and state explicitly whether they match before proposing an original approach.
 - New significant decisions become a new ADR in `docs/decisions/`, not an edit to `CLAUDE.md`
   itself. New bugs/gotchas go in `LESSONS_LEARNED.md`. New Fabric platform facts go in
   `PLATFORM_CONSTRAINTS.md`. Schema changes go directly into `DB_SCHEMA.md`.
