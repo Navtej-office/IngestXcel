@@ -9,7 +9,7 @@ Database), both via the existing `EXECUTION_METHOD` split (PIPELINE / NOTEBOOK).
 We need to support file-based sources — starting with Excel, with CSV/JSON/XML
 planned as follow-on additions using the same mechanism.
 
-Checked the ISD Accelerator reference framework first. It documents file
+Checked established file-ingestion reference patterns first. These document file
 ingestion (CSV/JSON/Excel/XML/Parquet) as reading directly from a Lakehouse
 `Files` area — either uploaded directly, or via a OneLake shortcut to another
 Fabric location, ADLS Gen2, S3, or GCS — with per-format config (e.g. Excel
