@@ -5,13 +5,13 @@ deliberate before/after tests, not just single ambiguous runs)
 
 ## Context
 
-The ISD Accelerator reference framework's full Curating-Data feature surface (merge types,
-transformation library, DQ rule engine, post-write reconciliation, surrogate keys, custom
-functions) is enterprise-scale and far beyond what a first Silver build needs. Industry-standard
-medallion architecture practice was used to decide what actually earns the name "Silver" versus
-what's framework richness accumulated over time — same philosophy as the Gold placeholder
-(ADR-0006) and skipping ISD's full Bronze engine (ADR-0005): build only what's needed now,
-document the rest as a known deferral rather than silently omitting it.
+A full-featured curating-data surface (merge types, transformation library, DQ rule engine,
+post-write reconciliation, surrogate keys, custom functions), as seen in mature enterprise
+data-ingestion frameworks, is enterprise-scale and far beyond what a first Silver build needs.
+Industry-standard medallion architecture practice was used to decide what actually earns the
+name "Silver" versus what's framework richness accumulated over time — same philosophy as the
+Gold placeholder (ADR-0006) and skipping a full-featured Bronze engine (ADR-0005): build only
+what's needed now, document the rest as a known deferral rather than silently omitting it.
 
 ## Decision: v1 Feature Scope
 
@@ -48,14 +48,14 @@ count.
 ## Decision: Metadata Design
 
 Silver source entities are named plain (e.g. `person_address`), never layer-prefixed (never
-`bronze.person_address`) — confirmed against ISD Accelerator's own convention that
-`Target_Datastore` is always a separate field from the entity name, never concatenated into it.
+`bronze.person_address`) — confirmed against the common convention that a target datastore is
+always a separate field from the entity name, never concatenated into it.
 The Bronze table a Silver entity reads from is resolved via `SOURCE_CONNECTION_ENDPOINT_ID`
 pointing at Bronze's own target Lakehouse endpoint (`TGT_INGESTXCEL_BRONZE_LH`), reused as a
 source reference — no new Fabric Connection needed.
 
-Per ISD Accelerator's confirmed convention (each layer transition gets its own orchestration
-row — a Bronze load and a Silver load for the same business entity are two separate
+Per the confirmed convention that each layer transition gets its own orchestration row (a
+Bronze load and a Silver load for the same business entity are two separate
 `META_ORCHESTRATION_ID` rows, never one shared row), each Silver entity has its own
 `META_SOURCE_ENTITY` row and its own `META_ORCHESTRATION` row.
 
@@ -84,7 +84,7 @@ SCD2 branching happens entirely inside `NB_Silver_SCD_Load` via `SCD_TYPE`, so n
 Execution Route is needed at the pipeline level — every Silver entity takes the same single path
 through one notebook activity. `ForEach` set to `isSequential=false`, `batchCount=10`.
 
-**SCD2 algorithm**, adapted directly from ISD Accelerator's proven pattern: hash-compare business
+**SCD2 algorithm**, adapted directly from a proven hash-compare pattern: hash-compare business
 columns (excluding PK, watermark, and SCD2 bookkeeping columns) between the new batch and
 existing active (`IS_CURRENT='Y'`) rows. No existing match = brand new; hash differs = changed;
 hash matches = unchanged, no action at all (this is what prevents spurious new SCD2 versions on
@@ -94,8 +94,8 @@ every run). Changed rows produce two derived rows — the old version stamped
 condition (`PK AND current.IS_CURRENT='Y' AND new.IS_CURRENT='N'`) only matches the close-out
 rows; everything else falls through to `whenNotMatchedInsertAll`. `SCD2_START_DATE_COL`
 deliberately reuses the same natural business timestamp as the watermark column rather than a
-separate system-generated timestamp — matches ISD Accelerator's own `source_timestamp_column_
-name` convention. SCD1 is a plain `whenMatchedUpdateAll`/`whenNotMatchedInsertAll` upsert — no
+separate system-generated timestamp — matches the common `source_timestamp_column_name`
+convention seen in similar frameworks. SCD1 is a plain `whenMatchedUpdateAll`/`whenNotMatchedInsertAll` upsert — no
 history, values fully overwritten in place.
 
 ## Consequences
