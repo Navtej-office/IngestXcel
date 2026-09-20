@@ -401,3 +401,267 @@ display(spark.sql("SHOW TABLES IN <schema_name>"))
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+# MAGIC %%sql
+# MAGIC /* ============================================================
+# MAGIC    Gold Demo — Silver onboarding metadata
+# MAGIC    Tables: sales_customer, sales_salesterritory,
+# MAGIC            sales_salesorderheader, sales_salesorderdetail
+# MAGIC    SCD_TYPE = SCD1, PROCESSING_METHOD = FULL, no WATERMARK_COLUMN
+# MAGIC    (mirrors business_financial_data's proven no-watermark pattern).
+# MAGIC 
+# MAGIC    Run against the IngestXcel metadata SQL database, AFTER Bronze
+# MAGIC    is confirmed successful for all four entities.
+# MAGIC 
+# MAGIC    Silver's "source" endpoint is Bronze's own target Lakehouse
+# MAGIC    endpoint (confirmed = 7, TGT_INGESTXCEL_BRONZE_LH, from your
+# MAGIC    Bronze run's Get Bronze Batch output) — resolved dynamically
+# MAGIC    below for robustness rather than hardcoded. Silver's own
+# MAGIC    trigger name and target endpoint are derived from the existing
+# MAGIC    'product' Silver entity (Production.Product's proven Silver
+# MAGIC    row), the same reuse pattern used for Bronze.
+# MAGIC    ============================================================ */
+# MAGIC 
+# MAGIC DECLARE @BronzeTargetEndpointId INT;
+# MAGIC DECLARE @SilverTargetEndpointId INT;
+# MAGIC DECLARE @SilverTriggerName      VARCHAR(500);
+# MAGIC 
+# MAGIC SELECT TOP 1 @BronzeTargetEndpointId = MO.META_CONNECTION_ENDPOINT_ID
+# MAGIC FROM DBO.META_ORCHESTRATION MO
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_ID = MO.SOURCE_ENTITY_ID
+# MAGIC WHERE MSE.SOURCE_ENTITY_NAME = 'Production.Product'
+# MAGIC   AND MO.TRIGGER_NAME LIKE '%BRONZE%';
+# MAGIC 
+# MAGIC SELECT TOP 1
+# MAGIC     @SilverTargetEndpointId = MO.META_CONNECTION_ENDPOINT_ID,
+# MAGIC     @SilverTriggerName      = MO.TRIGGER_NAME
+# MAGIC FROM DBO.META_ORCHESTRATION MO
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_ID = MO.SOURCE_ENTITY_ID
+# MAGIC WHERE MSE.SOURCE_ENTITY_NAME = 'product'
+# MAGIC   AND MO.TRIGGER_NAME LIKE '%SILVER%';
+# MAGIC 
+# MAGIC IF @BronzeTargetEndpointId IS NULL OR @SilverTargetEndpointId IS NULL OR @SilverTriggerName IS NULL
+# MAGIC BEGIN
+# MAGIC     RAISERROR('Could not resolve Bronze target endpoint / Silver target endpoint / Silver trigger name from Production.Product / product. Verify those rows exist as expected before running this script.', 16, 1);
+# MAGIC     RETURN;
+# MAGIC END
+# MAGIC 
+# MAGIC PRINT 'Resolved BronzeTargetEndpointId = ' + CAST(@BronzeTargetEndpointId AS VARCHAR(20));
+# MAGIC PRINT 'Resolved SilverTargetEndpointId = ' + CAST(@SilverTargetEndpointId AS VARCHAR(20));
+# MAGIC PRINT 'Resolved SilverTriggerName = ' + @SilverTriggerName;
+# MAGIC 
+# MAGIC /* ------------------------------------------------------------
+# MAGIC    1. META_SOURCE_ENTITY — Silver's own row per table, pointing
+# MAGIC       at Bronze's target Lakehouse endpoint as its "source"
+# MAGIC       (ADR-0006/0007 standing principle: layer N reads layer
+# MAGIC       N-1's own output, not the original external system).
+# MAGIC    ------------------------------------------------------------ */
+# MAGIC INSERT INTO DBO.META_SOURCE_ENTITY
+# MAGIC     (SOURCE_ENTITY_NAME, SOURCE_CONNECTION_ENDPOINT_ID, DESCRIPTION, CREATED_BY)
+# MAGIC SELECT T.NM, @BronzeTargetEndpointId, 'Gold demo — Silver entity, reads Bronze output', 'GOLD_DEMO_ONBOARDING'
+# MAGIC FROM (VALUES
+# MAGIC     ('sales_customer'),
+# MAGIC     ('sales_salesterritory'),
+# MAGIC     ('sales_salesorderheader'),
+# MAGIC     ('sales_salesorderdetail')
+# MAGIC ) AS T(NM)
+# MAGIC WHERE NOT EXISTS (
+# MAGIC     SELECT 1 FROM DBO.META_SOURCE_ENTITY MSE WHERE MSE.SOURCE_ENTITY_NAME = T.NM
+# MAGIC );
+# MAGIC 
+# MAGIC /* ------------------------------------------------------------
+# MAGIC    2. META_ORCHESTRATION — Silver trigger row per table.
+# MAGIC    ------------------------------------------------------------ */
+# MAGIC INSERT INTO DBO.META_ORCHESTRATION
+# MAGIC     (TRIGGER_NAME, SOURCE_ENTITY_ID, SOURCE_ENTITY_NAME, META_CONNECTION_ENDPOINT_ID,
+# MAGIC      TARGET_ENTITY, PRIMARY_KEYS, PROCESSING_METHOD, CREATED_BY)
+# MAGIC SELECT
+# MAGIC     @SilverTriggerName,
+# MAGIC     MSE.SOURCE_ENTITY_ID,
+# MAGIC     MSE.SOURCE_ENTITY_NAME,
+# MAGIC     @SilverTargetEndpointId,
+# MAGIC     T.TARGET_ENTITY,
+# MAGIC     T.PRIMARY_KEYS,
+# MAGIC     'FULL',
+# MAGIC     'GOLD_DEMO_ONBOARDING'
+# MAGIC FROM (VALUES
+# MAGIC     ('sales_customer',         'sales_customer',         'CustomerID'),
+# MAGIC     ('sales_salesterritory',   'sales_salesterritory',   'TerritoryID'),
+# MAGIC     ('sales_salesorderheader', 'sales_salesorderheader', 'SalesOrderID'),
+# MAGIC     ('sales_salesorderdetail', 'sales_salesorderdetail', 'SalesOrderID,SalesOrderDetailID')
+# MAGIC ) AS T(SOURCE_NAME, TARGET_ENTITY, PRIMARY_KEYS)
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_NAME = T.SOURCE_NAME
+# MAGIC WHERE NOT EXISTS (
+# MAGIC     SELECT 1 FROM DBO.META_ORCHESTRATION MO
+# MAGIC     WHERE MO.SOURCE_ENTITY_ID = MSE.SOURCE_ENTITY_ID AND MO.TRIGGER_NAME = @SilverTriggerName
+# MAGIC );
+# MAGIC 
+# MAGIC /* ------------------------------------------------------------
+# MAGIC    3. META_CONFIGURATION_CORE — SCD_TYPE + QUARANTINE_TABLE_NAME
+# MAGIC       per entity. No WATERMARK_COLUMN row (FULL rescan every run,
+# MAGIC       same proven no-watermark pattern as business_financial_data).
+# MAGIC    ------------------------------------------------------------ */
+# MAGIC INSERT INTO DBO.META_CONFIGURATION_CORE
+# MAGIC     (SOURCE_ENTITY_ID, SOURCE_ENTITY_NAME, CONFIGURATION_CATEGORY, CONFIGURATION_NAME, CONFIGURATION_VALUE, CREATED_BY)
+# MAGIC SELECT MSE.SOURCE_ENTITY_ID, MSE.SOURCE_ENTITY_NAME, 'SILVER', T.CFG_NAME, T.CFG_VALUE, 'GOLD_DEMO_ONBOARDING'
+# MAGIC FROM (VALUES
+# MAGIC     ('sales_customer',         'SCD_TYPE', 'SCD1'),
+# MAGIC     ('sales_customer',         'QUARANTINE_TABLE_NAME', 'sales_customer_quarantine'),
+# MAGIC     ('sales_salesterritory',   'SCD_TYPE', 'SCD1'),
+# MAGIC     ('sales_salesterritory',   'QUARANTINE_TABLE_NAME', 'sales_salesterritory_quarantine'),
+# MAGIC     ('sales_salesorderheader', 'SCD_TYPE', 'SCD1'),
+# MAGIC     ('sales_salesorderheader', 'QUARANTINE_TABLE_NAME', 'sales_salesorderheader_quarantine'),
+# MAGIC     ('sales_salesorderdetail', 'SCD_TYPE', 'SCD1'),
+# MAGIC     ('sales_salesorderdetail', 'QUARANTINE_TABLE_NAME', 'sales_salesorderdetail_quarantine')
+# MAGIC ) AS T(SOURCE_NAME, CFG_NAME, CFG_VALUE)
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_NAME = T.SOURCE_NAME
+# MAGIC WHERE NOT EXISTS (
+# MAGIC     SELECT 1 FROM DBO.META_CONFIGURATION_CORE MCC
+# MAGIC     WHERE MCC.SOURCE_ENTITY_ID = MSE.SOURCE_ENTITY_ID
+# MAGIC       AND MCC.CONFIGURATION_CATEGORY = 'SILVER'
+# MAGIC       AND MCC.CONFIGURATION_NAME = T.CFG_NAME
+# MAGIC );
+# MAGIC 
+# MAGIC /* ------------------------------------------------------------
+# MAGIC    Verification
+# MAGIC    ------------------------------------------------------------ */
+# MAGIC SELECT MSE.SOURCE_ENTITY_NAME, MO.TRIGGER_NAME, MO.TARGET_ENTITY, MO.PRIMARY_KEYS,
+# MAGIC        MO.PROCESSING_METHOD, MO.META_CONNECTION_ENDPOINT_ID
+# MAGIC FROM DBO.META_ORCHESTRATION MO
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_ID = MO.SOURCE_ENTITY_ID
+# MAGIC WHERE MSE.SOURCE_ENTITY_NAME IN
+# MAGIC     ('sales_customer','sales_salesterritory','sales_salesorderheader','sales_salesorderdetail')
+# MAGIC   AND MO.TRIGGER_NAME = @SilverTriggerName
+# MAGIC ORDER BY MSE.SOURCE_ENTITY_NAME;
+# MAGIC 
+# MAGIC SELECT MSE.SOURCE_ENTITY_NAME, MCC.CONFIGURATION_NAME, MCC.CONFIGURATION_VALUE
+# MAGIC FROM DBO.META_CONFIGURATION_CORE MCC
+# MAGIC JOIN DBO.META_SOURCE_ENTITY MSE ON MSE.SOURCE_ENTITY_ID = MCC.SOURCE_ENTITY_ID
+# MAGIC WHERE MSE.SOURCE_ENTITY_NAME IN
+# MAGIC     ('sales_customer','sales_salesterritory','sales_salesorderheader','sales_salesorderdetail')
+# MAGIC   AND MCC.CONFIGURATION_CATEGORY = 'SILVER'
+# MAGIC ORDER BY MSE.SOURCE_ENTITY_NAME, MCC.CONFIGURATION_NAME;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sparksql",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+display(spark.sql("DESCRIBE TABLE fabrictraining_ingestxcel.productcategory"))
+display(spark.sql("DESCRIBE TABLE fabrictraining_ingestxcel.productcategory_quarantine"))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# ============================================================
+# Gold Demo — Silver table + quarantine skeletons
+# Tables: sales_customer, sales_salesterritory,
+#         sales_salesorderheader, sales_salesorderdetail
+#
+# Run this as a cell in a Fabric notebook with Silver_LH set as
+# the DEFAULT LAKEHOUSE.
+#
+# Schema confirmed as fabrictraining_ingestxcel (same schema name
+# reused from Bronze_LH). Column shapes match the Bronze DDL
+# exactly — confirmed via productcategory (SCD1): a Silver SCD1
+# table carries no extra bookkeeping columns beyond its source,
+# and its quarantine table is an identical-shape copy, not a
+# separate structure with added audit columns.
+# ============================================================
+
+silver_schema = "fabrictraining_ingestxcel"
+
+table_defs = {
+    "sales_customer": """
+        CustomerID      INT,
+        PersonID        INT,
+        StoreID         INT,
+        TerritoryID     INT,
+        AccountNumber   STRING,
+        rowguid         STRING,
+        ModifiedDate    TIMESTAMP
+    """,
+    "sales_salesterritory": """
+        TerritoryID           INT,
+        Name                  STRING,
+        CountryRegionCode     STRING,
+        SalesTerritoryGroup   STRING,
+        SalesYTD              DECIMAL(19,4),
+        SalesLastYear         DECIMAL(19,4),
+        CostYTD               DECIMAL(19,4),
+        CostLastYear          DECIMAL(19,4),
+        rowguid               STRING,
+        ModifiedDate          TIMESTAMP
+    """,
+    "sales_salesorderheader": """
+        SalesOrderID            INT,
+        RevisionNumber          SMALLINT,
+        OrderDate               TIMESTAMP,
+        DueDate                 TIMESTAMP,
+        ShipDate                TIMESTAMP,
+        Status                  SMALLINT,
+        OnlineOrderFlag         BOOLEAN,
+        SalesOrderNumber        STRING,
+        PurchaseOrderNumber     STRING,
+        AccountNumber           STRING,
+        CustomerID              INT,
+        SalesPersonID           INT,
+        TerritoryID             INT,
+        BillToAddressID         INT,
+        ShipToAddressID         INT,
+        ShipMethodID            INT,
+        CreditCardID            INT,
+        CreditCardApprovalCode  STRING,
+        CurrencyRateID          INT,
+        SubTotal                DECIMAL(19,4),
+        TaxAmt                  DECIMAL(19,4),
+        Freight                 DECIMAL(19,4),
+        TotalDue                DECIMAL(19,4),
+        Comment                 STRING,
+        rowguid                 STRING,
+        ModifiedDate            TIMESTAMP
+    """,
+    "sales_salesorderdetail": """
+        SalesOrderID            INT,
+        SalesOrderDetailID      INT,
+        CarrierTrackingNumber   STRING,
+        OrderQty                SMALLINT,
+        ProductID               INT,
+        SpecialOfferID          INT,
+        UnitPrice               DECIMAL(19,4),
+        UnitPriceDiscount       DECIMAL(19,4),
+        LineTotal                DECIMAL(19,4),
+        rowguid                 STRING,
+        ModifiedDate            TIMESTAMP
+    """,
+}
+
+for table_name, cols in table_defs.items():
+    spark.sql(f"CREATE TABLE IF NOT EXISTS {silver_schema}.{table_name} ({cols}) USING DELTA")
+    spark.sql(f"CREATE TABLE IF NOT EXISTS {silver_schema}.{table_name}_quarantine ({cols}) USING DELTA")
+
+print("Silver + quarantine skeleton tables created (or already existed) under schema:", silver_schema)
+for table_name in table_defs:
+    print(f"--- {table_name} ---")
+    display(spark.sql(f"DESCRIBE TABLE {silver_schema}.{table_name}"))
+    print(f"--- {table_name}_quarantine ---")
+    display(spark.sql(f"DESCRIBE TABLE {silver_schema}.{table_name}_quarantine"))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
